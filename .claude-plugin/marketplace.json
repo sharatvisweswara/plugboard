@@ -1,0 +1,19 @@
+{
+  "name": "claude-extensions",
+  "owner": {
+    "name": "sharat",
+    "email": "sharat@evocalize.com"
+  },
+  "metadata": {
+    "description": "Personal marketplace of Claude Code plugins to experiment with.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "response-format-hint",
+      "source": "./plugins/response-format-hint",
+      "description": "Injects a response-format instruction on every user prompt: terse bullets prefixed with [DONE]/[TODO]/[INFO]/[WARN].",
+      "version": "0.1.0"
+    }
+  ]
+}
