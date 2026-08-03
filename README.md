@@ -68,7 +68,7 @@ For work too big for one exchange, `/slog` drives everything through a single ma
 | `/slog` | resume the active doc — report status + next actionable item |
 | `/slog list` | list docs under `docs/work/` with their status |
 
-slog is a command, not a toggleable hook-feature, so it does not appear in `/comms list`. The `/slog` command's prompt carries the whole protocol; `scripts/slog.sh` only does the mechanical scaffold/list. See `discussion.md` for the design rationale.
+slog is a command, not a toggleable hook-feature, so it does not appear in `/comms list`. The `/slog` command's prompt carries the whole protocol; `scripts/slog.sh` only does the mechanical scaffold/list. See [docs/discussion.md](docs/discussion.md) for the design rationale.
 
 ## Add a plugin
 
