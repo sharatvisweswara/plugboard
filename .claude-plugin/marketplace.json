@@ -12,8 +12,8 @@
     {
       "name": "comms",
       "source": "./plugins/comms",
-      "description": "Communication-style features (response formatting, tone, register), individually toggleable with a plugin-wide kill switch.",
-      "version": "0.2.0"
+      "description": "Communication-style features (response formatting, tone, register) plus the slog long-horizon workflow. Toggleable with a plugin-wide kill switch.",
+      "version": "0.3.0"
     }
   ]
 }
