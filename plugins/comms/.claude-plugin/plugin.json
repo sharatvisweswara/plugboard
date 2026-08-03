@@ -5,6 +5,5 @@
   "author": {
     "name": "sharat",
     "email": "sharat@evocalize.com"
-  },
-  "hooks": "./hooks/hooks.json"
+  }
 }
