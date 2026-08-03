@@ -10,10 +10,10 @@
   },
   "plugins": [
     {
-      "name": "response-format-hint",
-      "source": "./plugins/response-format-hint",
-      "description": "Injects a response-format instruction on every user prompt: terse bullets prefixed with [DONE]/[TODO]/[INFO]/[WARN].",
-      "version": "0.1.0"
+      "name": "comms",
+      "source": "./plugins/comms",
+      "description": "Communication-style features (response formatting, tone, register), individually toggleable with a plugin-wide kill switch.",
+      "version": "0.2.0"
     }
   ]
 }
