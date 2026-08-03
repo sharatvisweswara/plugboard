@@ -4,8 +4,12 @@
 # and list existing docs with their status. Operates on the current repo
 # (docs are written under ./docs/work/), template comes from the plugin.
 
-: "${CLAUDE_PLUGIN_ROOT:?slog.sh: CLAUDE_PLUGIN_ROOT unset}"
-tpl="$CLAUDE_PLUGIN_ROOT/slog/template.md"
+# Resolve the plugin root from this script's own location — CLAUDE_PLUGIN_ROOT
+# is only exported to hooks, not to the shell that runs a slash command's !bash.
+# slog.sh lives at <root>/scripts/slog.sh.
+script_dir=$(cd -- "$(dirname -- "$0")" && pwd -P) || { echo "slog.sh: cannot resolve script dir" >&2; exit 1; }
+COMMS_ROOT=$(dirname -- "$script_dir")
+tpl="$COMMS_ROOT/slog/template.md"
 
 cmd="${1:-list}"
 

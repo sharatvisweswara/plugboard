@@ -7,10 +7,13 @@
 #   comms-ctl.sh enable  <feature>      turn one feature on
 #   comms-ctl.sh disable <feature>      turn one feature off
 
-: "${CLAUDE_PLUGIN_ROOT:?comms-ctl.sh: CLAUDE_PLUGIN_ROOT unset}"
-COMMS_ROOT="$CLAUDE_PLUGIN_ROOT"
+# Resolve the plugin root from this script's own location — CLAUDE_PLUGIN_ROOT
+# is only exported to hooks, not to the shell that runs a slash command's !bash.
+# comms-ctl.sh lives at <root>/scripts/comms-ctl.sh.
+script_dir=$(cd -- "$(dirname -- "$0")" && pwd -P) || { echo "comms-ctl.sh: cannot resolve script dir" >&2; exit 1; }
+COMMS_ROOT=$(dirname -- "$script_dir")
 export COMMS_ROOT
-. "$CLAUDE_PLUGIN_ROOT/lib/comms.sh"
+. "$COMMS_ROOT/lib/comms.sh"
 comms_ensure_state
 
 cmd="${1:-list}"
