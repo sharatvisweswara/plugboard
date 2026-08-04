@@ -6,6 +6,7 @@
 FEATURE_NAME="Response format hint"
 FEATURE_DESC="Terse bullets prefixed with [DONE]/[TODO]/[INFO]/[WARN]."
 FEATURE_EVENT="UserPromptSubmit"
+FEATURE_GROUP="response-format"
 
 # Prints this feature's contribution to the event's additionalContext.
 feature_run() {

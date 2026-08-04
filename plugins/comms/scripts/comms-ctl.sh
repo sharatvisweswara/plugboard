@@ -29,7 +29,7 @@ print_list() {
   printf '%-18s %-9s %-16s %s\n' "FEATURE" "STATUS" "EVENT" "DESCRIPTION"
   printf '%-18s %-9s %-16s %s\n' "-------" "------" "-----" "-----------"
   for id in $(comms_feature_ids); do
-    if comms_feature_disabled "$id"; then st="disabled"; else st="enabled"; fi
+    if comms_feature_would_run "$id"; then st="enabled"; else st="disabled"; fi
     (
       . "$COMMS_ROOT/features/$id/feature.sh"
       printf '%-18s %-9s %-16s %s\n' "$id" "$st" "$FEATURE_EVENT" "$FEATURE_DESC"
@@ -46,7 +46,19 @@ case "$cmd" in
       rm -f "$(comms_state_dir)/plugin-disabled"
       echo "Plugin 'comms' enabled."
     elif comms_feature_exists "$arg"; then
-      rm -f "$(comms_state_dir)/disabled/$arg"
+      group="$(comms_feature_group "$arg")"
+      if [ -n "$group" ]; then
+        touch "$(comms_state_dir)/enabled/$arg"
+        for other in $(comms_feature_ids); do
+          [ "$other" = "$arg" ] && continue
+          [ "$(comms_feature_group "$other")" = "$group" ] || continue
+          comms_feature_opted_in "$other" || continue
+          rm -f "$(comms_state_dir)/enabled/$other"
+          echo "Feature '$other' disabled (mutually exclusive with '$arg')."
+        done
+      else
+        rm -f "$(comms_state_dir)/disabled/$arg"
+      fi
       echo "Feature '$arg' enabled."
     else
       echo "Unknown feature: $arg" >&2
@@ -59,7 +71,11 @@ case "$cmd" in
       touch "$(comms_state_dir)/plugin-disabled"
       echo "Plugin 'comms' disabled — all features suppressed until re-enabled."
     elif comms_feature_exists "$arg"; then
-      touch "$(comms_state_dir)/disabled/$arg"
+      if [ -n "$(comms_feature_group "$arg")" ]; then
+        rm -f "$(comms_state_dir)/enabled/$arg"
+      else
+        touch "$(comms_state_dir)/disabled/$arg"
+      fi
       echo "Feature '$arg' disabled."
     else
       echo "Unknown feature: $arg" >&2

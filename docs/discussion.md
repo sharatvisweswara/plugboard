@@ -43,13 +43,16 @@ Task line — pointer, not narrative:
 - [ ] Wire into router
 ```
 
-DoD row — evidence type declared up front, filled on completion:
+DoD item — a checkbox naming its evidence type, with the evidence indented beneath
+(a table can't hold multi-line command output, code fences, or screenshot embeds):
 ```markdown
-| Criterion | Evidence type | Evidence |
-|-----------|---------------|----------|
-| Requests over limit get 429 | test | `tests/test_ratelimit.py` 12/12 green |
-| Settings page renders new toggle | screenshot | `docs/work/ratelimit/toggle.png` |
-| Config documented | pointer | `README.md:88` |
+- [x] Requests over the limit get 429 — _evidence: test_
+    ```
+    tests/test_ratelimit.py 12/12 green
+    ```
+- [x] Settings page renders the new toggle — _evidence: screenshot_
+    ![toggle](toggle.png)
+- [x] Config documented — _evidence: pointer_ → `README.md:88`
 ```
 
 Diagram rule — reach for mermaid when the thing is a **structure or sequence**: data model (`erDiagram`), flow (`flowchart`), states (`stateDiagram`), interaction (`sequenceDiagram`). Prose for tradeoffs and constraints. Never diagram a plain list.
@@ -102,7 +105,7 @@ Reuses the `comms` toggle infra: the command can flip specific features on/off r
 - [x] **Doc location** — `docs/work/<slug>.md`.
 - [x] **Status transitions** — agent auto-advances the moment a gate is satisfied (no "may I advance?"). The `draft→agreed` gate still depends on the user answering blocking questions.
 
-Built as: `plugins/comms/commands/slog.md` (driver + protocol), `plugins/comms/slog/template.md`, `plugins/comms/scripts/slog.sh` (scaffold + list). slog is a command, not a toggleable hook-feature, so it does not appear in `/comms list`.
+Built as: `plugins/comms/commands/slog.md` (driver + protocol), `plugins/comms/slog/template.md`, `plugins/comms/scripts/slog.sh` (scaffold + list). slog is a command, not a toggleable hook-feature, so it does not appear in `/comms:style list`.
 
 ## Non-goals
 

@@ -13,13 +13,14 @@
 
 ## Definition of Done
 
-<!-- Acceptance criteria. Each row declares its evidence type up front; fill Evidence when met.
-     Done-gate = every row has evidence. Evidence type examples: pointer (file:line / commit),
-     test (name + pass count), screenshot (path), command (command + output). -->
+<!-- Acceptance criteria as a checklist. Each item names its evidence type; the actual
+     evidence hangs indented beneath it. Done-gate = every box ticked with evidence beneath.
+     Evidence types: pointer (file:line / commit / link), test (name + pass count),
+     screenshot (![embed](path)), command (command + output in a fenced block). -->
 
-| Criterion | Evidence type | Evidence |
-|-----------|---------------|----------|
-|  |  |  |
+- [ ] Criterion — _evidence: type_
+    <!-- evidence here: a pointer/link inline, or an indented ``` fence ```, or an ![embed](path) -->
+
 
 ## Open Questions
 
