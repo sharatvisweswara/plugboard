@@ -13,7 +13,7 @@
       "name": "comms",
       "source": "./plugins/comms",
       "description": "Communication-style features (response formatting, tone, register) plus the slog long-horizon workflow. Toggleable with a plugin-wide kill switch.",
-      "version": "0.3.0"
+      "version": "0.4.0"
     }
   ]
 }

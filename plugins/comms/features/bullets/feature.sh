@@ -1,9 +1,9 @@
 #!/bin/sh
-# Feature: response-format
+# Feature: bullets
 # Sourced by the dispatcher and the control CLI. Must only declare metadata
 # and define feature_run(); no side effects at source time.
 
-FEATURE_NAME="Response format hint"
+FEATURE_NAME="Bullets"
 FEATURE_DESC="Terse bullets prefixed with [DONE]/[TODO]/[INFO]/[WARN]."
 FEATURE_EVENT="UserPromptSubmit"
 FEATURE_GROUP="response-format"

@@ -1,9 +1,9 @@
 #!/bin/sh
-# Feature: response-format-checklist
+# Feature: checklist
 # Sourced by the dispatcher and the control CLI. Must only declare metadata
 # and define feature_run(); no side effects at source time.
 
-FEATURE_NAME="Response format hint: checklist"
+FEATURE_NAME="Checklist"
 FEATURE_DESC="Persistent checklist with pending/in_progress/completed/blocked status."
 FEATURE_EVENT="UserPromptSubmit"
 FEATURE_GROUP="response-format"
