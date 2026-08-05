@@ -38,7 +38,7 @@ Current features:
 
 | Feature | Event | Group | What it does |
 | --- | --- | --- | --- |
-| `bullets` | UserPromptSubmit | `response-format` | Terse bullets prefixed with `[DONE]`, `[TODO LOW\|MEDIUM\|HIGH]`, `[INFO]`, `[WARN]`. |
+| `bullets` | UserPromptSubmit | `response-format` | Reply grouped into sections — ✅ Done, ℹ️ Info, ⚠️ Warning, 📋 Todo — with priority-tagged (🔴/🟡/🟢) todos. |
 | `checklist` | UserPromptSubmit | `response-format` | Persistent checklist (`pending`/`in_progress`/`completed`/`blocked`), one `in_progress` at a time. |
 
 > **Grouped features are opt-in (default OFF).** Members of a group are mutually exclusive — enabling one auto-disables its siblings — so the plugin never picks one for you. After installing or updating, no response-format behavior is active until you turn one on: `/comms:style enable bullets` (or `checklist`). Ungrouped features stay opt-out (default ON).
