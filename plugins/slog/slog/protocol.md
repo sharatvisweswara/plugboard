@@ -1,19 +1,6 @@
----
-description: Drive long-horizon work through a living document (slog) instead of chat back-and-forth
-argument-hint: "[start <slug> | list | (empty to resume)]"
-allowed-tools: Bash(sh:*), Read, Edit, Write, Glob
----
+# slog protocol
 
-You are running the **slog** protocol: long-horizon work is driven through one living markdown document per feature, not through chat. The document is the single source of truth. You update it as a byproduct of doing the work — never as a separate ceremony.
-
-Mechanical result of the invocation (scaffold or listing):
-
-!`sh "${CLAUDE_PLUGIN_ROOT}/scripts/slog.sh" $ARGUMENTS`
-
-## Which mode you're in
-
-- `start <slug>` — a new doc was just scaffolded at `docs/work/<slug>.md`. Open it, then work the **draft** phase: draft the Goal and Definition of Done with the user, and record any genuine open questions. Do not start implementing yet.
-- `list` or no arguments — resume. If exactly one doc is not `done`, that's the active one; open it, report its status and the single next actionable item, and continue. If several are active or none are, list them and ask which.
+Long-horizon work is driven through one living markdown document per feature, not through chat. The document is the single source of truth. You update it as a byproduct of doing the work — never as a separate ceremony.
 
 ## The document
 

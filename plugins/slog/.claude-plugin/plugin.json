@@ -1,0 +1,9 @@
+{
+  "name": "slog",
+  "version": "0.2.0",
+  "description": "Long-horizon work driven through a living markdown document per feature — goal, Definition of Done with evidence, open questions, diagrams-first design, decisions log, and task checklist.",
+  "author": {
+    "name": "sharat",
+    "email": "sharat@evocalize.com"
+  }
+}

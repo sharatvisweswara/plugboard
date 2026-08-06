@@ -105,7 +105,7 @@ Reuses the `comms` toggle infra: the command can flip specific features on/off r
 - [x] **Doc location** — `docs/work/<slug>.md`.
 - [x] **Status transitions** — agent auto-advances the moment a gate is satisfied (no "may I advance?"). The `draft→agreed` gate still depends on the user answering blocking questions.
 
-Built as: `plugins/comms/commands/slog.md` (driver + protocol), `plugins/comms/slog/template.md`, `plugins/comms/scripts/slog.sh` (scaffold + list). slog is a command, not a toggleable hook-feature, so it does not appear in `/comms:style list`.
+Built as: `plugins/slog/commands/{start,resume,list}.md` (one command per mode, each inlining `plugins/slog/slog/protocol.md`), `plugins/slog/slog/template.md`, `plugins/slog/scripts/slog.sh` (scaffold + list). Originally nested under `comms` as a single arg-dispatching `/slog` command; extracted to its own plugin (no shared hook/toggle infrastructure), then the modes were promoted to separate commands.
 
 ## Non-goals
 

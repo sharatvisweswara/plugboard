@@ -1,4 +1,4 @@
-# claude-extensions
+# plugboard
 
 Personal [Claude Code plugin marketplace](https://docs.claude.com/en/docs/claude-code/plugins). A place to build, install, and experiment with plugins.
 
@@ -16,8 +16,9 @@ plugins/<name>/
 Add this marketplace, then install a plugin:
 
 ```
-/plugin marketplace add /Users/sharat/Projects/claude-extensions
-/plugin install comms@claude-extensions
+/plugin marketplace add .
+/plugin install comms@plugboard
+/plugin install slog@plugboard
 ```
 
 ## Plugins
@@ -61,17 +62,17 @@ A single dispatcher (`hooks/dispatch.sh <Event>`) runs per hook event. It walks 
 
 It's then auto-listed and auto-toggleable — no other wiring.
 
-#### `slog` — long-horizon work through a living document
+### `slog` — long-horizon work through a living document
 
 For work too big for one exchange, `/slog` drives everything through a single markdown doc per feature (`docs/work/<slug>.md`) instead of chat back-and-forth. The doc holds the goal, a Definition of Done whose criteria each declare their evidence type, open questions, diagrams-first design, an append-only decisions log, and a task checklist. The agent works the doc, records evidence inline, and auto-advances status (`draft → agreed → building → done`) as each gate is met — surfacing to chat only for blocking questions, sign-off, or the done-gate.
 
 | Command | Effect |
 | --- | --- |
-| `/slog start <slug>` | scaffold `docs/work/<slug>.md` from the template, status `draft` |
-| `/slog` | resume the active doc — report status + next actionable item |
-| `/slog list` | list docs under `docs/work/` with their status |
+| `/slog:start <slug>` | scaffold `docs/work/<slug>.md` from the template, status `draft` |
+| `/slog:resume` | resume the active doc — report status + next actionable item |
+| `/slog:list` | list docs under `docs/work/` with their status |
 
-slog is a command, not a toggleable hook-feature, so it does not appear in `/comms:style list`. The `/slog` command's prompt carries the whole protocol; `scripts/slog.sh` only does the mechanical scaffold/list. See [docs/discussion.md](docs/discussion.md) for the design rationale.
+slog is a command-only plugin — no hooks, no toggles. Each command inlines the shared protocol from `slog/protocol.md`; `scripts/slog.sh` only does the mechanical scaffold/list. See [docs/discussion.md](docs/discussion.md) for the design rationale.
 
 ## Add a plugin
 
