@@ -1,19 +1,17 @@
 ---
-description: List and toggle comms communication-style features (list/enable/disable)
-argument-hint: "[list|enable|disable] [feature]"
+description: List or switch the comms plugin's active communication style
+argument-hint: "[<style>|default|list]"
 allowed-tools: Bash(sh:*)
 ---
 
-Manage the `comms` plugin's communication-style features. Usage:
+Manage the `comms` plugin's communication style. At most one is active at a time. Usage:
 
-- `/comms:style` or `/comms:style list` — list features and their on/off state
-- `/comms:style disable` — kill switch: turn the whole plugin off
-- `/comms:style enable` — turn the whole plugin back on
-- `/comms:style disable <feature>` — turn one feature off
-- `/comms:style enable <feature>` — turn one feature on
+- `/comms:style` or `/comms:style list` — list styles and which one is active
+- `/comms:style <style>` — switch to that style
+- `/comms:style default` — switch off — no override, model's own judgment
 
 Result of running the control script:
 
 !`sh "${CLAUDE_PLUGIN_ROOT}/scripts/comms-ctl.sh" $ARGUMENTS`
 
-Report the outcome to the user tersely. If they passed no arguments, present the feature list.
+Print the script's output verbatim in a code block, unedited — no summarizing, paraphrasing, or commentary. The output above already is the report.

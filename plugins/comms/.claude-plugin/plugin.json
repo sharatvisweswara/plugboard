@@ -1,6 +1,6 @@
 {
   "name": "comms",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Communication-style features for Claude — response formatting, tone, register. Toggleable features with a plugin-wide kill switch.",
   "author": {
     "name": "sharat",

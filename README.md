@@ -25,45 +25,39 @@ Add this marketplace, then install a plugin:
 
 ### `comms` — communication styles
 
-Features that shape *how Claude communicates* (response format, tone, register). Each feature toggles independently, and the whole plugin has a kill switch. Control it with the `/comms:style` command:
+Features that shape *how Claude communicates* (response format, tone, register). At most one style is active at a time — picking one switches off whatever was active before. Control it with the `/comms:style` command:
 
 | Command | Effect |
 | --- | --- |
-| `/comms:style` or `/comms:style list` | list features + their on/off state |
-| `/comms:style disable` | kill switch — turn the whole plugin off |
-| `/comms:style enable` | turn the whole plugin back on |
-| `/comms:style disable <feature>` | turn one feature off |
-| `/comms:style enable <feature>` | turn one feature on |
+| `/comms:style` or `/comms:style list` | list styles + which one is active |
+| `/comms:style <style>` | switch to that style |
+| `/comms:style default` | switch off — no override, model's own judgment |
 | `/comms:summary` | one-off: dump current task status as an executive summary (verdict line + detail) |
 
-`/comms:summary` is a plain command, not a toggleable feature — it runs once when invoked rather than shaping every reply.
+`/comms:summary` is a plain command, not a style — it runs once when invoked rather than shaping every reply.
 
-Current features:
+Current styles:
 
-| Feature | Event | Group | What it does |
-| --- | --- | --- | --- |
-| `bullets` | UserPromptSubmit | `response-format` | Reply grouped into sections — ✅ Done, ℹ️ Info, ⚠️ Warning, 📋 Todo — with priority-tagged (🔴/🟡/🟢) todos. |
-| `checklist` | UserPromptSubmit | `response-format` | Persistent checklist (`pending`/`in_progress`/`completed`/`blocked`), one `in_progress` at a time. |
+| Style | Event | What it does |
+| --- | --- | --- |
+| `bullets` | UserPromptSubmit | Reply grouped into sections — ✅ Done, ℹ️ Info, ⚠️ Warning, 📋 Todo — with priority-tagged (🔴/🟡/🟢) todos. |
+| `checklist` | UserPromptSubmit | Persistent checklist (`pending`/`in_progress`/`completed`/`blocked`), one `in_progress` at a time. |
 
-> **Grouped features are opt-in (default OFF).** Members of a group are mutually exclusive — enabling one auto-disables its siblings — so the plugin never picks one for you. After installing or updating, no response-format behavior is active until you turn one on: `/comms:style enable bullets` (or `checklist`). Ungrouped features stay opt-out (default ON).
+`default` is always available too — no style file fires, Claude uses its own judgment.
 
 #### How the toggle infrastructure works
 
-A single dispatcher (`hooks/dispatch.sh <Event>`) runs per hook event. It walks every feature, skips the disabled ones (and everything when the kill switch is on), collects each enabled feature's text, and emits one hook JSON envelope. State lives outside the plugin at `${CLAUDE_CONFIG_DIR:-~/.claude}/comms/` so it survives reinstalls:
+A single dispatcher (`hooks/dispatch.sh <Event>`) runs per hook event. It reads the one active style, runs its `feature_run()` if its `FEATURE_EVENT` matches, and emits a single hook JSON envelope. State lives outside the plugin at `${CLAUDE_CONFIG_DIR:-~/.claude}/comms/style` (one file holding the active style id, or `default`) so it survives reinstalls.
 
-- `plugin-disabled` present → kill switch on (whole plugin off)
-- ungrouped feature (no `FEATURE_GROUP`) → default ON; `disabled/<id>` present turns it off
-- grouped feature (`FEATURE_GROUP` set) → default OFF; `enabled/<id>` present turns it on, and at most one member of a group runs (enforced at read-time)
+`scripts/comms-ctl.sh` is the one place that writes this state; `lib/comms.sh` is the shared helper both it and the dispatcher source.
 
-`scripts/comms-ctl.sh` is the one place that reads/writes this state; `lib/comms.sh` is the shared helper both it and the dispatcher source. A feature opts into mutual exclusivity by declaring `FEATURE_GROUP="<name>"` — siblings sharing that name are mutually exclusive, no CLI changes needed.
-
-#### Add a feature to `comms`
+#### Add a style to `comms`
 
 1. `mkdir plugins/comms/features/<id>`
 2. Write `features/<id>/feature.sh` declaring `FEATURE_NAME`, `FEATURE_DESC`, `FEATURE_EVENT`, and a `feature_run()` that prints the contribution. No side effects at source time.
 3. If its `FEATURE_EVENT` is one the dispatcher isn't wired for yet, add one line to `hooks/hooks.json` pointing that event at `dispatch.sh <Event>`.
 
-It's then auto-listed and auto-toggleable — no other wiring.
+It's then auto-listed and auto-selectable — no other wiring.
 
 ### `slog` — long-horizon work through a living document
 

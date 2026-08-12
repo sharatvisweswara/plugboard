@@ -6,7 +6,6 @@
 FEATURE_NAME="Bullets"
 FEATURE_DESC="Sectioned reply: Done / Info / Warning / Todo, with priority-tagged todos."
 FEATURE_EVENT="UserPromptSubmit"
-FEATURE_GROUP="response-format"
 
 # Prints this feature's contribution to the event's additionalContext.
 feature_run() {

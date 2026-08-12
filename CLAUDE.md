@@ -27,21 +27,18 @@ After editing a plugin's shipped files, reinstall/reload it in a running session
 
 ### `comms` — communication styles
 
-Shapes *how* Claude communicates (response format, tone, register), independent of task content. Controlled via `/comms:style [list|enable|disable] [feature]`.
+Shapes *how* Claude communicates (response format, tone, register), independent of task content. At most one style is active at a time. Controlled via `/comms:style [<style>|default|list]`.
 
 Architecture:
 
-- **Features** (`plugins/comms/features/<id>/feature.sh`) declare `FEATURE_NAME`, `FEATURE_DESC`, `FEATURE_EVENT`, optionally `FEATURE_GROUP`, and a `feature_run()` that prints the feature's text contribution to stdout. Sourced by both the dispatcher and the control CLI — must have no side effects at source time.
-- **Dispatcher** (`hooks/dispatch.sh <Event>`), wired once per event in `hooks/hooks.json`, walks every installed feature, keeps the ones enabled for that event, concatenates their `feature_run()` output, and emits a single hook JSON envelope (`hookSpecificOutput.additionalContext`).
-- **State** lives outside the plugin at `${CLAUDE_CONFIG_DIR:-~/.claude}/comms/`, so it survives plugin reinstalls/updates:
-  - `plugin-disabled` file present → kill switch, whole plugin off.
-  - Ungrouped feature (no `FEATURE_GROUP`) → default **on**; `disabled/<id>` marker turns it off.
-  - Grouped feature (`FEATURE_GROUP` set) → default **off**; `enabled/<id>` marker turns it on. Members sharing a group are mutually exclusive — enabling one clears its siblings' markers (`comms-ctl.sh enable`), and `comms_group_winner()` in `lib/comms.sh` re-enforces at read time as a backstop.
-- `lib/comms.sh` is the one shared helper, sourced by both `hooks/dispatch.sh` and `scripts/comms-ctl.sh` — the only place that should read/write feature state.
+- **Features** (`plugins/comms/features/<id>/feature.sh`), each one a style, declare `FEATURE_NAME`, `FEATURE_DESC`, `FEATURE_EVENT`, and a `feature_run()` that prints the feature's text contribution to stdout. Sourced by both the dispatcher and the control CLI — must have no side effects at source time.
+- **Dispatcher** (`hooks/dispatch.sh <Event>`), wired once per event in `hooks/hooks.json`, reads the active style, runs its `feature_run()` if its `FEATURE_EVENT` matches the firing event, and emits a single hook JSON envelope (`hookSpecificOutput.additionalContext`).
+- **State** lives outside the plugin at `${CLAUDE_CONFIG_DIR:-~/.claude}/comms/style`, so it survives plugin reinstalls/updates — one file holding the active feature id, or `default` for no override. `comms-ctl.sh <name>` overwrites it; switching is exclusive by construction, no group bookkeeping needed.
+- `lib/comms.sh` is the one shared helper, sourced by both `hooks/dispatch.sh` and `scripts/comms-ctl.sh` — the only place that should read/write this state.
 
-Current features are `bullets` and `checklist`, both in the `response-format` group (mutually exclusive, default off).
+Current styles are `bullets` and `checklist`.
 
-To add a feature: create `plugins/comms/features/<id>/feature.sh` following the contract above; if its `FEATURE_EVENT` isn't already wired, add one line to `hooks/hooks.json` pointing that event at `dispatch.sh <Event>`. No other wiring needed — it's auto-listed and auto-toggleable.
+To add a style: create `plugins/comms/features/<id>/feature.sh` following the contract above; if its `FEATURE_EVENT` isn't already wired, add one line to `hooks/hooks.json` pointing that event at `dispatch.sh <Event>`. No other wiring needed — it's auto-listed and auto-selectable.
 
 ### `slog` — long-horizon work through a living document
 

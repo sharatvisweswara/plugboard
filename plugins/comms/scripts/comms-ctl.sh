@@ -1,11 +1,9 @@
 #!/bin/sh
-# comms control CLI. Drives enable/disable state and lists features.
+# comms control CLI. Switches the active style and lists available ones.
 #
-#   comms-ctl.sh list | status          show plugin + per-feature state
-#   comms-ctl.sh enable                 turn the whole plugin on
-#   comms-ctl.sh disable                turn the whole plugin off (kill switch)
-#   comms-ctl.sh enable  <feature>      turn one feature on
-#   comms-ctl.sh disable <feature>      turn one feature off
+#   comms-ctl.sh [list|status]   show all styles and which is active
+#   comms-ctl.sh <style>         switch to that style
+#   comms-ctl.sh default         switch off — model's own judgment, no override
 
 # Resolve the plugin root from this script's own location — CLAUDE_PLUGIN_ROOT
 # is only exported to hooks, not to the shell that runs a slash command's !bash.
@@ -16,75 +14,43 @@ export COMMS_ROOT
 . "$COMMS_ROOT/lib/comms.sh"
 comms_ensure_state
 
-cmd="${1:-list}"
-arg="$2"
-
 print_list() {
-  if comms_plugin_disabled; then
-    echo "Plugin 'comms': DISABLED (kill switch on — all features suppressed)"
-  else
-    echo "Plugin 'comms': enabled"
-  fi
-  echo
-  printf '%-18s %-9s %-16s %s\n' "FEATURE" "STATUS" "EVENT" "DESCRIPTION"
-  printf '%-18s %-9s %-16s %s\n' "-------" "------" "-----" "-----------"
+  active="$(comms_active_style)"
+  printf '%-18s %-8s %-16s %s\n' "STYLE" "ACTIVE" "EVENT" "DESCRIPTION"
+  printf '%-18s %-8s %-16s %s\n' "-----" "------" "-----" "-----------"
   for id in $(comms_feature_ids); do
-    if comms_feature_would_run "$id"; then st="enabled"; else st="disabled"; fi
+    st=""
+    [ "$id" = "$active" ] && st="*"
     (
       . "$COMMS_ROOT/features/$id/feature.sh"
-      printf '%-18s %-9s %-16s %s\n' "$id" "$st" "$FEATURE_EVENT" "$FEATURE_DESC"
+      printf '%-18s %-8s %-16s %s\n' "$id" "$st" "$FEATURE_EVENT" "$FEATURE_DESC"
     )
   done
+  st=""
+  [ "$active" = "default" ] && st="*"
+  printf '%-18s %-8s %-16s %s\n' "default" "$st" "-" "no override — model's own judgment"
 }
 
+cmd="${1:-list}"
+
 case "$cmd" in
-  list|status|"")
+  list|status)
     print_list
     ;;
-  enable)
-    if [ -z "$arg" ]; then
-      rm -f "$(comms_state_dir)/plugin-disabled"
-      echo "Plugin 'comms' enabled."
-    elif comms_feature_exists "$arg"; then
-      group="$(comms_feature_group "$arg")"
-      if [ -n "$group" ]; then
-        touch "$(comms_state_dir)/enabled/$arg"
-        for other in $(comms_feature_ids); do
-          [ "$other" = "$arg" ] && continue
-          [ "$(comms_feature_group "$other")" = "$group" ] || continue
-          comms_feature_opted_in "$other" || continue
-          rm -f "$(comms_state_dir)/enabled/$other"
-          echo "Feature '$other' disabled (mutually exclusive with '$arg')."
-        done
-      else
-        rm -f "$(comms_state_dir)/disabled/$arg"
-      fi
-      echo "Feature '$arg' enabled."
-    else
-      echo "Unknown feature: $arg" >&2
-      echo "Run 'comms list' to see available features." >&2
-      exit 1
-    fi
-    ;;
-  disable)
-    if [ -z "$arg" ]; then
-      touch "$(comms_state_dir)/plugin-disabled"
-      echo "Plugin 'comms' disabled — all features suppressed until re-enabled."
-    elif comms_feature_exists "$arg"; then
-      if [ -n "$(comms_feature_group "$arg")" ]; then
-        rm -f "$(comms_state_dir)/enabled/$arg"
-      else
-        touch "$(comms_state_dir)/disabled/$arg"
-      fi
-      echo "Feature '$arg' disabled."
-    else
-      echo "Unknown feature: $arg" >&2
-      echo "Run 'comms list' to see available features." >&2
-      exit 1
-    fi
+  default)
+    printf 'default\n' > "$(comms_style_file)"
+    rm -rf "$(comms_state_dir)/enabled" "$(comms_state_dir)/disabled" "$(comms_state_dir)/plugin-disabled"
+    echo "Style: default (no override — model's own judgment)."
     ;;
   *)
-    echo "usage: comms [list|status] | enable [<feature>] | disable [<feature>]" >&2
-    exit 1
+    if comms_feature_exists "$cmd"; then
+      printf '%s\n' "$cmd" > "$(comms_style_file)"
+      rm -rf "$(comms_state_dir)/enabled" "$(comms_state_dir)/disabled" "$(comms_state_dir)/plugin-disabled"
+      echo "Style: $cmd."
+    else
+      echo "Unknown style: $cmd" >&2
+      echo "Run '/comms:style' to see available styles." >&2
+      exit 1
+    fi
     ;;
 esac

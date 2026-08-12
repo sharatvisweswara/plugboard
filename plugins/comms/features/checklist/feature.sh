@@ -6,7 +6,6 @@
 FEATURE_NAME="Checklist"
 FEATURE_DESC="Persistent checklist with pending/in_progress/completed/blocked status."
 FEATURE_EVENT="UserPromptSubmit"
-FEATURE_GROUP="response-format"
 
 # Prints this feature's contribution to the event's additionalContext.
 feature_run() {
