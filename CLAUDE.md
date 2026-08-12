@@ -56,7 +56,7 @@ Drives work too large for one chat exchange through a single markdown doc per fe
 
 Single skill (`plugins/autoland/skills/autoland/SKILL.md`), `disable-model-invocation: true` — only fires on explicit `/autoland` or "land this PR", never auto-triggered. Five phases (commit/push/PR → request Copilot review → resolve comments → watch CI and fix breaks → merge), looping back into phases 3/4 whenever a push produces new review comments or new CI results. No hooks, no commands, no state.
 
-Phase 3 shells out to `~/.claude/skills/resolve-pr-comments/*.sh` — a separate personal skill, not bundled in this plugin. It has to be present on the machine running `/autoland` for that phase to work.
+Self-contained: phase 3 uses its own bundled scripts at `plugins/autoland/skills/autoland/scripts/*.sh` (fetch comments, list review threads, reply, resolve via GraphQL) — no dependency on any personal `~/.claude/skills/` content.
 
 ### `cleanup` — dry-run-then-confirm worktree tidying
 

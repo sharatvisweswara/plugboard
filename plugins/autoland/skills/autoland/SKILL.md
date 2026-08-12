@@ -64,18 +64,30 @@ Poll for Copilot's review to land (it can take a few minutes):
 gh pr view --json reviews --jq '.reviews[] | select(.author.login | test("copilot"; "i"))'
 ```
 
-Once it's posted (or any other reviewer left comments), reuse the
-`resolve-pr-comments` skill's scripts directly rather than re-deriving this:
+Once it's posted (or any other reviewer left comments), use this skill's own
+scripts, bundled alongside this file in `scripts/` — all auto-detect
+owner/repo/PR from the current git context; pass an explicit PR number as
+the last argument to override:
 
 ```bash
-~/.claude/skills/resolve-pr-comments/fetch-comments.sh
-~/.claude/skills/resolve-pr-comments/list-threads.sh
-~/.claude/skills/resolve-pr-comments/reply-to-thread.sh COMMENT_ID "..."
-~/.claude/skills/resolve-pr-comments/resolve-thread.sh THREAD_NODE_ID
+scripts/fetch-comments.sh              # inline review comments + general PR comments, as JSON
+scripts/list-threads.sh                # thread node IDs + resolved status + root comment DB id
+scripts/reply-to-thread.sh COMMENT_ID "..."
+scripts/resolve-thread.sh THREAD_NODE_ID
 ```
 
-**Deviation from that skill's default**: do not stop and wait for a plan
-approval on every thread. For each open thread:
+`fetch-comments.sh` output: each comment has `id`, `user`, `path`, `line`,
+`body`, `in_reply_to_id`. Group by thread — a thread root has no
+`in_reply_to_id`; replies share the root's `id` as their `in_reply_to_id`.
+Skip threads that already have a reply from you. Reply before resolving, so
+the thread shows context; match `list-threads.sh`'s `commentId` to the
+comment IDs you replied to before resolving. Resolution is GraphQL-only
+(`resolveReviewThread` mutation, handled by the script) — there's no REST
+equivalent.
+
+For each open thread, plan the fix before touching anything: read the full
+comment body and the commented line(s), check whether recent commits already
+address it. Then, without waiting for approval:
 
 - If the fix is mechanical/unambiguous (style, an obvious bug, a naming nit,
   a missing null-check, a test gap Copilot flagged correctly) — apply it,
