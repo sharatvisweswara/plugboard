@@ -19,6 +19,7 @@ plugins/<name>/
 /plugin marketplace add .
 /plugin install comms@plugboard
 /plugin install slog@plugboard
+/plugin install autoland@plugboard
 ```
 
 After editing a plugin's shipped files, reinstall/reload it in a running session to pick up changes. Every plugin script that needs its own root resolves it from `$0`'s location rather than assuming `CLAUDE_PLUGIN_ROOT` is set, since that variable is only exported to hooks, not to the shell running a slash command's `!` bash block — see the `script_dir=$(cd -- "$(dirname -- "$0")" ...)` pattern in `plugins/*/scripts/*.sh`. New plugin scripts should follow the same pattern.
@@ -49,6 +50,12 @@ Drives work too large for one chat exchange through a single markdown doc per fe
 - `/slog:list` — list docs under `docs/work/` with their status.
 
 `plugins/slog/scripts/slog.sh` does only the mechanical parts (scaffold, list); each command's markdown inlines the actual working protocol from `plugins/slog/slog/protocol.md` (doc structure, evidence model, lifecycle `draft → agreed → building → done`). Design rationale and the decisions behind the doc format are in `docs/discussion.md` — read it before changing the template or protocol.
+
+### `autoland` — unattended commit-to-merge
+
+Single skill (`plugins/autoland/skills/autoland/SKILL.md`), `disable-model-invocation: true` — only fires on explicit `/autoland` or "land this PR", never auto-triggered. Five phases (commit/push/PR → request Copilot review → resolve comments → watch CI and fix breaks → merge), looping back into phases 3/4 whenever a push produces new review comments or new CI results. No hooks, no commands, no state.
+
+Phase 3 shells out to `~/.claude/skills/resolve-pr-comments/*.sh` — a separate personal skill, not bundled in this plugin. It has to be present on the machine running `/autoland` for that phase to work.
 
 ## Add a plugin
 

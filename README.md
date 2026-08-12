@@ -19,6 +19,7 @@ Add this marketplace, then install a plugin:
 /plugin marketplace add .
 /plugin install comms@plugboard
 /plugin install slog@plugboard
+/plugin install autoland@plugboard
 ```
 
 ## Plugins
@@ -70,6 +71,12 @@ For work too big for one exchange, `/slog` drives everything through a single ma
 | `/slog:list` | list docs under `docs/work/` with their status |
 
 slog is a command-only plugin — no hooks, no toggles. Each command inlines the shared protocol from `slog/protocol.md`; `scripts/slog.sh` only does the mechanical scaffold/list. See [docs/discussion.md](docs/discussion.md) for the design rationale.
+
+### `autoland` — unattended commit-to-merge
+
+Takes a change from working tree to merged PR with no human in the loop except for genuinely significant calls: commit, push, open a PR, make sure Copilot is requested as a reviewer, resolve review comments autonomously, watch CI and fix breaks, then merge the moment everything is green. Not model-invocable — trigger explicitly with `/autoland` or "land this PR".
+
+Phase 3 (resolving review comments) shells out to the `resolve-pr-comments` skill's scripts at `~/.claude/skills/resolve-pr-comments/*.sh` — that skill isn't bundled here, so `/autoland` needs it present in your personal `~/.claude/skills/` to run phase 3.
 
 ## Add a plugin
 

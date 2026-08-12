@@ -20,6 +20,12 @@
       "source": "./plugins/slog",
       "description": "Long-horizon work driven through a living markdown document per feature, instead of chat back-and-forth.",
       "version": "0.2.0"
+    },
+    {
+      "name": "autoland",
+      "source": "./plugins/autoland",
+      "description": "Commit, push, open a PR, request Copilot review, resolve comments, watch CI, and merge — no human approval requested except on genuinely significant calls.",
+      "version": "0.1.0"
     }
   ]
 }

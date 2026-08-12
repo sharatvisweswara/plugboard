@@ -1,0 +1,9 @@
+{
+  "name": "autoland",
+  "version": "0.1.0",
+  "description": "Commit, push, open a PR, request Copilot review, resolve comments, watch CI, and merge — no human approval requested except on genuinely significant calls.",
+  "author": {
+    "name": "sharat",
+    "email": "sharat@evocalize.com"
+  }
+}
