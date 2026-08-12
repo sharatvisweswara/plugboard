@@ -34,6 +34,9 @@ Features that shape *how Claude communicates* (response format, tone, register).
 | `/comms:style enable` | turn the whole plugin back on |
 | `/comms:style disable <feature>` | turn one feature off |
 | `/comms:style enable <feature>` | turn one feature on |
+| `/comms:summary` | one-off: dump current task status as an executive summary (verdict line + detail) |
+
+`/comms:summary` is a plain command, not a toggleable feature — it runs once when invoked rather than shaping every reply.
 
 Current features:
 
