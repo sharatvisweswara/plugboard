@@ -20,6 +20,7 @@ Add this marketplace, then install a plugin:
 /plugin install comms@plugboard
 /plugin install slog@plugboard
 /plugin install autoland@plugboard
+/plugin install cleanup@plugboard
 ```
 
 ## Plugins
@@ -77,6 +78,10 @@ slog is a command-only plugin — no hooks, no toggles. Each command inlines the
 Takes a change from working tree to merged PR with no human in the loop except for genuinely significant calls: commit, push, open a PR, make sure Copilot is requested as a reviewer, resolve review comments autonomously, watch CI and fix breaks, then merge the moment everything is green. Not model-invocable — trigger explicitly with `/autoland` or "land this PR".
 
 Phase 3 (resolving review comments) shells out to the `resolve-pr-comments` skill's scripts at `~/.claude/skills/resolve-pr-comments/*.sh` — that skill isn't bundled here, so `/autoland` needs it present in your personal `~/.claude/skills/` to run phase 3.
+
+### `cleanup` — dry-run-then-confirm worktree tidying
+
+Inventories development leftovers in the current worktree only — a merged branch (remote deletion; local branch and the worktree itself are never touched), per-worktree Docker containers, stale dev processes, implemented `plans/*.md` files, scratch/secrets files — then asks for confirmation via `AskUserQuestion` before deleting anything. Phase 1 is strictly read-only; nothing is applied without an explicit selection.
 
 ## Add a plugin
 

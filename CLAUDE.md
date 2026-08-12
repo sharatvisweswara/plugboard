@@ -20,6 +20,7 @@ plugins/<name>/
 /plugin install comms@plugboard
 /plugin install slog@plugboard
 /plugin install autoland@plugboard
+/plugin install cleanup@plugboard
 ```
 
 After editing a plugin's shipped files, reinstall/reload it in a running session to pick up changes. Every plugin script that needs its own root resolves it from `$0`'s location rather than assuming `CLAUDE_PLUGIN_ROOT` is set, since that variable is only exported to hooks, not to the shell running a slash command's `!` bash block — see the `script_dir=$(cd -- "$(dirname -- "$0")" ...)` pattern in `plugins/*/scripts/*.sh`. New plugin scripts should follow the same pattern.
@@ -56,6 +57,10 @@ Drives work too large for one chat exchange through a single markdown doc per fe
 Single skill (`plugins/autoland/skills/autoland/SKILL.md`), `disable-model-invocation: true` — only fires on explicit `/autoland` or "land this PR", never auto-triggered. Five phases (commit/push/PR → request Copilot review → resolve comments → watch CI and fix breaks → merge), looping back into phases 3/4 whenever a push produces new review comments or new CI results. No hooks, no commands, no state.
 
 Phase 3 shells out to `~/.claude/skills/resolve-pr-comments/*.sh` — a separate personal skill, not bundled in this plugin. It has to be present on the machine running `/autoland` for that phase to work.
+
+### `cleanup` — dry-run-then-confirm worktree tidying
+
+Single skill (`plugins/cleanup/skills/cleanup/SKILL.md`). Scoped to the current worktree only — never enumerates or touches other worktrees. Phase 1 inventories (read-only): merged remote branch, per-worktree Docker containers, stale dev processes, implemented `plans/*.md`, scratch/secrets files. Phase 2 reports and calls `AskUserQuestion` (multi-select) — nothing is proposed without an explicit action a user can pick. Phase 3 applies only the confirmed categories. Never deletes the worktree itself or its checked-out local branch — that's left to whatever coordinates worktrees at the box level.
 
 ## Add a plugin
 

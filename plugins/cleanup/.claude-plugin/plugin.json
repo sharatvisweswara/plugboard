@@ -1,0 +1,9 @@
+{
+  "name": "cleanup",
+  "version": "0.1.0",
+  "description": "Inventory development leftovers in the current worktree — merged branches, containers, stale processes, scratch files — and delete only what's confirmed.",
+  "author": {
+    "name": "sharat",
+    "email": "sharat@evocalize.com"
+  }
+}

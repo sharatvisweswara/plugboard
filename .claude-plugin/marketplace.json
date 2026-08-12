@@ -26,6 +26,12 @@
       "source": "./plugins/autoland",
       "description": "Commit, push, open a PR, request Copilot review, resolve comments, watch CI, and merge — no human approval requested except on genuinely significant calls.",
       "version": "0.1.0"
+    },
+    {
+      "name": "cleanup",
+      "source": "./plugins/cleanup",
+      "description": "Inventory development leftovers in the current worktree — merged branches, containers, stale processes, scratch files — and delete only what's confirmed.",
+      "version": "0.1.0"
     }
   ]
 }
