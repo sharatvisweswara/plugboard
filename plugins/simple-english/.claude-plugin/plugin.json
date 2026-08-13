@@ -1,0 +1,9 @@
+{
+  "name": "simple-english",
+  "version": "0.1.0",
+  "description": "Writing style based on ASD-STE100 Simplified Technical English — short sentences, one word per meaning, active voice, no hedging modals. Loaded once per session (and after every compaction), not reinjected per turn.",
+  "author": {
+    "name": "sharat",
+    "email": "sharat@evocalize.com"
+  }
+}

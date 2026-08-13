@@ -21,6 +21,7 @@ Add this marketplace, then install a plugin:
 /plugin install slog@plugboard
 /plugin install autoland@plugboard
 /plugin install cleanup@plugboard
+/plugin install simple-english@plugboard
 ```
 
 ## Plugins
@@ -82,6 +83,12 @@ Self-contained: phase 3 (resolving review comments) uses its own bundled scripts
 ### `cleanup` — dry-run-then-confirm worktree tidying
 
 Inventories development leftovers in the current worktree only — a merged branch (remote deletion; local branch and the worktree itself are never touched), per-worktree Docker containers, stale dev processes, implemented `plans/*.md` files, scratch/secrets files — then asks for confirmation via `AskUserQuestion` before deleting anything. Phase 1 is strictly read-only; nothing is applied without an explicit selection.
+
+### `simple-english` — writing style, layered over the others
+
+Constrains wording and sentence construction (short sentences, one word per meaning, active voice, no hedging modals, condition before command) — not reply structure, so it composes with whichever `comms` style is active rather than competing with it. Based on ASD-STE100 Simplified Technical English; reference implementation: [AminBlg/SimpleEnglish](https://github.com/AminBlg/SimpleEnglish).
+
+Delivered via a `SessionStart` hook (matchers `startup|resume|clear|fork|compact`), not `UserPromptSubmit` — it loads once per session and again after every context compaction, instead of every single turn. The ruleset lives at `skills/simple-english/SKILL.md`; the hook just `cat`s it into `additionalContext`, and the same file is independently reachable as a model-invoked Skill. Ambient once installed — no on/off toggle, no `comms` integration. Design rationale (why `SessionStart` over `UserPromptSubmit`, why a separate plugin instead of a new `comms` axis) is in [docs/work/simple-english.md](docs/work/simple-english.md).
 
 ## Add a plugin
 

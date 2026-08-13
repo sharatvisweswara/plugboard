@@ -21,6 +21,7 @@ plugins/<name>/
 /plugin install slog@plugboard
 /plugin install autoland@plugboard
 /plugin install cleanup@plugboard
+/plugin install simple-english@plugboard
 ```
 
 After editing a plugin's shipped files, reinstall/reload it in a running session to pick up changes. Every plugin script that needs its own root resolves it from `$0`'s location rather than assuming `CLAUDE_PLUGIN_ROOT` is set, since that variable is only exported to hooks, not to the shell running a slash command's `!` bash block — see the `script_dir=$(cd -- "$(dirname -- "$0")" ...)` pattern in `plugins/*/scripts/*.sh`. New plugin scripts should follow the same pattern.
@@ -61,6 +62,14 @@ Self-contained: phase 3 uses its own bundled scripts at `plugins/autoland/skills
 ### `cleanup` — dry-run-then-confirm worktree tidying
 
 Single skill (`plugins/cleanup/skills/cleanup/SKILL.md`). Scoped to the current worktree only — never enumerates or touches other worktrees. Phase 1 inventories (read-only): merged remote branch, per-worktree Docker containers, stale dev processes, implemented `plans/*.md`, scratch/secrets files. Phase 2 reports and calls `AskUserQuestion` (multi-select) — nothing is proposed without an explicit action a user can pick. Phase 3 applies only the confirmed categories. Never deletes the worktree itself or its checked-out local branch — that's left to whatever coordinates worktrees at the box level.
+
+### `simple-english` — writing style, layered over the others
+
+Unlike `comms`' styles, this constrains wording/sentence construction, not reply structure — designed to compose with whichever `comms` style is active, not compete with it. Deliberately **not** a `comms` axis: `comms`' redesign collapsed multi-axis complexity into one active-style file on purpose, and this would have undone that; plugins already compose per-event without a shared dispatcher, so there was no need to couple them.
+
+Delivered via `hooks/hooks.json` on `SessionStart`, matcher `startup|resume|clear|fork|compact` — not `UserPromptSubmit`. `SessionStart`'s `compact` matcher exists specifically to re-inject content lost to context summarization, so wiring all 5 matchers gets the same durability as a per-turn hook at a fraction of the repeated cost (checked against the official hooks docs before building this, not assumed). `hooks/session-start.sh` just `cat`s `skills/simple-english/SKILL.md` and JSON-escapes it into `additionalContext` — same pattern as `superpowers`' own `session-start` hook. That SKILL.md is also independently reachable as a model-invoked Skill (no `disable-model-invocation`), so it's one source of truth serving both the ambient injection and on-demand reinforcement.
+
+No on/off toggle — ambient once installed. Rule set is a condensed paraphrase of ASD-STE100 (not the full 53-rule spec) by design; full design rationale, the rejected alternatives (comms axis, `UserPromptSubmit`, Skill-only), and why a bare "use ASD-STE100" name-drop doesn't work are in `docs/work/simple-english.md`.
 
 ## Add a plugin
 
