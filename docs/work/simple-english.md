@@ -62,7 +62,8 @@ flowchart LR
 - [x] `plugins/simple-english/hooks/session-start.sh` — cats SKILL.md, JSON-escapes, emits envelope
 - [x] Register in `.claude-plugin/marketplace.json`
 - [x] Document in `README.md` and `CLAUDE.md`
-- [ ] Smoke-test: install, reload, confirm the ruleset actually lands in context — needs a live session (mine is already running with `SessionStart` past); standalone script output verified instead, see DoD
+- [x] Smoke-test: skill path — installed, reloaded, `/simple-english:simple-english` renders the exact SKILL.md content, correctly listed as `simple-english:simple-english`
+- [ ] Smoke-test: `SessionStart` path — unverified in the session that did the install, since it predates the plugin (no `startup` fired for it); needs a fresh session, `/clear`, or a compaction to confirm auto-fire
 
 ## Out of Scope
 
