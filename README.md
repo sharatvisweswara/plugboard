@@ -43,7 +43,7 @@ Current styles:
 | Style | Event | What it does |
 | --- | --- | --- |
 | `bullets` | UserPromptSubmit | Reply grouped into sections — ✅ Done, ℹ️ Info, ⚠️ Warning, 📋 Todo — with priority-tagged (🔴/🟡/🟢) todos. |
-| `checklist` | UserPromptSubmit | Persistent checklist (`pending`/`in_progress`/`completed`/`blocked`), one `in_progress` at a time. |
+| `checklist` | UserPromptSubmit | Persistent checklist, one `in_progress` at a time — items prefixed ⬜/🔄/✅/🚫 for pending/in_progress/completed/blocked. |
 
 `default` is always available too — no style file fires, Claude uses its own judgment.
 

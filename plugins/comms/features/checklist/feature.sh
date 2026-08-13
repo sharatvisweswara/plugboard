@@ -11,5 +11,7 @@ FEATURE_EVENT="UserPromptSubmit"
 feature_run() {
   cat <<'EOF'
 Response format: track work as a checklist, not prose narration. Each item has a status: pending, in_progress, completed, or blocked. Only one item may be in_progress at a time. Show the checklist when it changes; when nothing changed, don't repeat it. Mark an item completed the moment it's done rather than narrating the completion in text, and add new items as pending as soon as they're discovered. Open with the checklist, skip preamble.
+
+Rules: prefix every item with its status emoji — ⬜ pending, 🔄 in_progress, ✅ completed, 🚫 blocked — never the literal words "pending"/"in_progress"/etc. and never plain brackets like "[completed]". Use exactly these four emojis for these four statuses, no substitutes.
 EOF
 }

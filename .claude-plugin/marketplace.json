@@ -13,7 +13,7 @@
       "name": "comms",
       "source": "./plugins/comms",
       "description": "Communication-style features (response formatting, tone, register). Exactly one style active at a time.",
-      "version": "0.7.0"
+      "version": "0.8.0"
     },
     {
       "name": "slog",

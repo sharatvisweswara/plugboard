@@ -1,7 +1,7 @@
 {
   "name": "comms",
-  "version": "0.7.0",
-  "description": "Communication-style features for Claude — response formatting, tone, register. Toggleable features with a plugin-wide kill switch.",
+  "version": "0.8.0",
+  "description": "Communication-style features for Claude — response formatting, tone, register. Exactly one style active at a time.",
   "author": {
     "name": "sharat",
     "email": "sharat@evocalize.com"
