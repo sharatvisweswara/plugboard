@@ -75,7 +75,7 @@ slog is a command-only plugin — no hooks, no toggles. Each command inlines the
 
 ### `autoland` — unattended commit-to-merge
 
-Takes a change from working tree to merged PR with no human in the loop except for genuinely significant calls: commit, push, open a PR, make sure Copilot is requested as a reviewer, resolve review comments autonomously, watch CI and fix breaks, then merge the moment everything is green. Not model-invocable — trigger explicitly with `/autoland:autoland` (plugin commands are always namespaced by plugin name, so this can't be a bare `/autoland`) or "land this PR".
+Takes a change from working tree to merged PR with no human in the loop except for genuinely significant calls: commit, push, open a PR, make sure Copilot is requested as a reviewer, resolve review comments autonomously, watch CI and fix breaks, then merge the moment everything is green. Not model-invocable — trigger explicitly with `/autoland:autoland` (skills get auto slash-invocation as `<plugin>:<skill-name>`, so this can't be a bare `/autoland`) or "land this PR".
 
 Self-contained: phase 3 (resolving review comments) uses its own bundled scripts under `skills/autoland/scripts/` (`fetch-comments.sh`, `list-threads.sh`, `reply-to-thread.sh`, `resolve-thread.sh` — resolving threads is GraphQL-only, handled by the script), no external skill dependency.
 

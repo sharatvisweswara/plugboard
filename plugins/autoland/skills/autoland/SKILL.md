@@ -1,6 +1,6 @@
 ---
 name: autoland
-description: Commit, push, and open a PR, make sure Copilot is requested as a reviewer, autonomously address any review comments, then watch CI and fix anything that breaks, merging as soon as everything is green — no human approval requested. Not model-invocable; trigger explicitly with "/autoland" or "land this PR".
+description: Commit, push, and open a PR, make sure Copilot is requested as a reviewer, autonomously address any review comments, then watch CI and fix anything that breaks, merging as soon as everything is green — no human approval requested. Not model-invocable; trigger explicitly with "/autoland:autoland" or "land this PR".
 allowed-tools: Read, Edit, Write, Bash, Agent, AskUserQuestion
 disable-model-invocation: true
 ---
@@ -8,8 +8,10 @@ disable-model-invocation: true
 # autoland
 
 Take a change from working tree to merged PR with no human in the loop except
-for genuinely significant calls. Five phases, run in order, looping back into
-phase 3/4 whenever a push produces new review comments or new CI results.
+for genuinely significant calls. This is an explicit invocation — begin at
+phase 1 immediately, no confirmation needed to start. Five phases, run in
+order, looping back into phase 3/4 whenever a push produces new review
+comments or new CI results.
 
 1. **Commit, push, PR** — the usual flow.
 2. **Copilot reviewer** — make sure it's actually requested.
