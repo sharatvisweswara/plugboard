@@ -25,7 +25,7 @@
       "name": "autoland",
       "source": "./plugins/autoland",
       "description": "Commit, push, open a PR, request Copilot review, resolve comments, watch CI, and merge — no human approval requested except on genuinely significant calls.",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "name": "cleanup",

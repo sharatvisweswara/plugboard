@@ -54,7 +54,7 @@ Drives work too large for one chat exchange through a single markdown doc per fe
 
 ### `autoland` — unattended commit-to-merge
 
-Single skill (`plugins/autoland/skills/autoland/SKILL.md`), `disable-model-invocation: true` — only fires on explicit `/autoland` or "land this PR", never auto-triggered. Five phases (commit/push/PR → request Copilot review → resolve comments → watch CI and fix breaks → merge), looping back into phases 3/4 whenever a push produces new review comments or new CI results. No hooks, no commands, no state.
+`plugins/autoland/skills/autoland/SKILL.md`, `disable-model-invocation: true` — only fires on explicit invocation ("land this PR", or the `/autoland:autoland` command), never auto-triggered by the model. `commands/autoland.md` is a thin wrapper that `cat`s the skill file in and tells the model to start phase 1 immediately — same pattern slog's commands use for `slog/protocol.md`. Plugin commands are always namespaced by plugin name, so this can't be shortened to a bare `/autoland`. Five phases (commit/push/PR → request Copilot review → resolve comments → watch CI and fix breaks → merge), looping back into phases 3/4 whenever a push produces new review comments or new CI results. No hooks, no state.
 
 Self-contained: phase 3 uses its own bundled scripts at `plugins/autoland/skills/autoland/scripts/*.sh` (fetch comments, list review threads, reply, resolve via GraphQL) — no dependency on any personal `~/.claude/skills/` content.
 
