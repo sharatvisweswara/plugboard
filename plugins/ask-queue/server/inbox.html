@@ -67,7 +67,7 @@
 <script>
 const list = document.getElementById("list");
 const count = document.getElementById("count");
-let shown = "";
+let shown = null;  // key of the last render; null forces a rebuild
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -162,7 +162,7 @@ function post(body, id) {
     delete pending[id];
     if (r.status === 409) err.textContent = "Already answered.";
     else if (!r.ok) { err.textContent = (await r.json()).error || "failed"; card.querySelectorAll("button").forEach(b => b.disabled = false); return; }
-    shown = "";
+    shown = null;
     load();
   }, 1000);
 }
