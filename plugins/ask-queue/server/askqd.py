@@ -14,8 +14,17 @@ Endpoints:
   POST /api/answer         {"id", "kind": "answer"|"more_info", "answers", "note"}
 
 Listens on 127.0.0.1 always, and also on this machine's tailnet address when
-Tailscale is up, so the inbox is reachable from other tailnet devices. The
-/hook/* endpoints answer on loopback only.
+Tailscale is up, so the inbox is reachable from other tailnet devices and
+sessions on other tailnet machines can use this daemon as their hub. On the
+tailnet listener, /hook/* accepts only peers that `tailscale whois` reports as
+owned by this machine's Tailscale user.
+
+Events and errors go to <state>/ask-queue.log (shared with the client, role
+"askqd"). askqd.log keeps the raw stderr: the HTTP access log and anything
+that escapes the handlers.
+
+/hook/wait returns 202 every WAIT_SLICE_SECONDS with no news, so long-polls
+over the network never sit idle for hours; the client polls again.
 """
 
 import json
@@ -28,10 +37,12 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from askq_client import TAILSCALE_CLIS, deny_output, git_branch, log, session_context, short
+
 HOST = "127.0.0.1"
-TAILSCALE_CLIS = ("tailscale", "/usr/local/bin/tailscale", "/Applications/Tailscale.app/Contents/MacOS/Tailscale")
 PORT = int(os.environ.get("ASKQ_PORT", "7788"))
 STATE_DIR = os.path.join(os.environ.get("CLAUDE_CONFIG_DIR", os.path.expanduser("~/.claude")), "ask-queue")
 DB_PATH = os.path.join(STATE_DIR, "queue.db")
@@ -40,16 +51,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # Inbox URLs this daemon serves, loopback first; filled in by main().
 URLS = []
 
-# Max time one /hook/wait request holds before returning 204.
-WAIT_MAX_SECONDS = 24 * 3600
-
-DENY_REASON = (
-    "Your question was queued as {id} in the user's ask-queue inbox. The user answers "
-    "asynchronously, possibly hours from now. Do not ask it again and do not wait for it. "
-    "Continue with any work that does not depend on the answer. If you have other "
-    "independent questions, ask them now with AskUserQuestion so they are queued too. "
-    "When you are blocked on answers, end your turn: the answer will arrive as a new message."
-)
+# Max time one /hook/wait request holds before returning 202 (poll again).
+WAIT_SLICE_SECONDS = int(os.environ.get("ASKQ_WAIT_SLICE", "600"))
 
 WAKE_FOOTER = (
     "If the user already answered you directly in this session, use your judgement "
@@ -88,6 +91,12 @@ def init_db():
                  delivered_at integer
                )"""
         )
+        cols = {r[1] for r in conn.execute("pragma table_info(asks)")}
+        if "host" not in cols:
+            conn.execute("alter table asks add column host text")
+        if "client_ref" not in cols:
+            conn.execute("alter table asks add column client_ref text")
+            conn.execute("create unique index if not exists asks_client_ref on asks (client_ref)")
 
 
 def is_tailnet_ip(ip):
@@ -121,65 +130,45 @@ def tailnet_ip():
     return None
 
 
-def git_branch(cwd):
-    if not cwd:
-        return None
-    try:
-        out = subprocess.run(
-            ["git", "-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True, text=True, timeout=5,
-        )
-        return out.stdout.strip() or None
-    except Exception:
-        return None
+_whois_cache = {}
 
 
-def entry_text(entry):
-    content = (entry.get("message") or {}).get("content")
-    if isinstance(content, str):
-        return content.strip()
-    if isinstance(content, list):
-        texts = [c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text"]
-        return "\n".join(t for t in texts if t.strip()).strip()
-    return ""
-
-
-def session_context(transcript_path, limit=3000):
-    """Return the user's latest prompt plus the assistant text written since
-    then, read from the session transcript. None when unavailable."""
-    if not transcript_path or not os.path.isfile(transcript_path):
-        sys.stderr.write("context: no transcript at %r\n" % transcript_path)
-        return None
-    try:
-        with open(transcript_path, "rb") as f:
-            f.seek(0, os.SEEK_END)
-            size = f.tell()
-            f.seek(max(0, size - 1024 * 1024))
-            lines = f.read().decode("utf-8", "replace").splitlines()
-    except OSError:
-        return None
-    assistant = []
-    prompt = None
-    for line in reversed(lines):
-        try:
-            entry = json.loads(line)
-        except ValueError:
+def tailscale_json(*args):
+    """Run the tailscale CLI with --json and return the parsed output, or None."""
+    for cli in TAILSCALE_CLIS:
+        path = shutil.which(cli)
+        if not path:
             continue
-        kind = entry.get("type")
-        content = (entry.get("message") or {}).get("content")
-        if kind == "user" and isinstance(content, str) and content.strip():
-            prompt = content.strip()
-            break
-        if kind == "assistant":
-            text = entry_text(entry)
-            if text:
-                assistant.append(text)
-    parts = []
-    if prompt:
-        parts.append("User asked:\n" + prompt[:1000])
-    if assistant:
-        parts.append("Claude said:\n" + "\n\n".join(reversed(assistant))[-(limit - 1000):])
-    return "\n\n".join(parts) or None
+        try:
+            out = subprocess.run([path] + list(args) + ["--json"], capture_output=True, text=True, timeout=5)
+            return json.loads(out.stdout)
+        except (OSError, subprocess.TimeoutExpired, ValueError):
+            continue
+    return None
+
+
+def tailnet_user_id(ip=None):
+    """Tailscale user id that owns `ip`, or this machine's user when ip is None."""
+    try:
+        if ip is None:
+            return tailscale_json("status", "--self")["Self"]["UserID"]
+        return tailscale_json("whois", ip)["UserProfile"]["ID"]
+    except (TypeError, KeyError):
+        return None
+
+
+def same_tailnet_user(ip):
+    """True when the peer at `ip` belongs to the same Tailscale user as this machine.
+    Results are cached for 10 minutes per IP."""
+    hit = _whois_cache.get(ip)
+    if hit and hit[1] > time.time():
+        return hit[0]
+    me = tailnet_user_id()
+    peer = tailnet_user_id(ip)
+    ok = me is not None and peer == me
+    _whois_cache[ip] = (ok, time.time() + 600)
+    log("askqd", "whois", ip=ip, peer_user=peer, hub_user=me, allowed=ok)
+    return ok
 
 
 def notify(title, body):
@@ -196,8 +185,8 @@ def notify(title, body):
         cmd = ["osascript", "-e", "display notification {} with title {}".format(json.dumps(body), json.dumps(title))]
     try:
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except OSError:
-        pass
+    except OSError as e:
+        log("askqd", "notify-failed", cmd=cmd[0], error=e)
 
 
 def ask_label(ask_id):
@@ -205,25 +194,41 @@ def ask_label(ask_id):
 
 
 def enqueue(hook_input):
+    """Store one AskUserQuestion call; return its id. The client sends context,
+    branch, and host; older hook inputs without them get them computed here.
+    A repeated client_ref (a spool retry whose response was lost) returns the
+    existing id instead of a duplicate."""
     tool_input = hook_input.get("tool_input") or {}
     questions = tool_input.get("questions") or []
     cwd = hook_input.get("cwd")
+    ref = hook_input.get("client_ref")
     with db() as conn:
+        if ref:
+            row = conn.execute("select id from asks where client_ref = ?", (ref,)).fetchone()
+            if row:
+                log("askqd", "enqueue-duplicate", id=ask_label(row["id"]), ref=ref)
+                return row["id"]
         cur = conn.execute(
-            "insert into asks (session_id, cwd, branch, context, questions, created_at) values (?, ?, ?, ?, ?, ?)",
+            "insert into asks (session_id, cwd, branch, context, host, client_ref, questions, created_at)"
+            " values (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 hook_input.get("session_id") or "unknown",
                 cwd,
-                git_branch(cwd),
-                session_context(hook_input.get("transcript_path")),
+                hook_input["branch"] if "branch" in hook_input else git_branch(cwd),
+                hook_input["context"] if "context" in hook_input else session_context(hook_input.get("transcript_path")),
+                hook_input.get("host"),
+                ref,
                 json.dumps(questions),
                 int(time.time()),
             ),
         )
         ask_id = cur.lastrowid
+    log("askqd", "enqueued", id=ask_label(ask_id), session=short(hook_input.get("session_id")),
+        host=hook_input.get("host"), cwd=cwd, questions=len(questions))
     first = questions[0].get("question", "") if questions else ""
     repo = os.path.basename(cwd) if cwd else "?"
-    notify("ask-queue: {} ({})".format(ask_label(ask_id), repo), first)
+    where = "{} on {}".format(repo, hook_input["host"]) if hook_input.get("host") else repo
+    notify("ask-queue: {} ({})".format(ask_label(ask_id), where), first)
     with cond:
         cond.notify_all()
     return ask_id
@@ -269,16 +274,18 @@ def peer_closed(sock):
 
 def wait_for_answers(session_id, sock):
     """Block until this session has answered, undelivered asks. Returns the
-    rows (marked delivered), or None when there is nothing to wait for."""
+    rows (marked delivered), None when there is nothing to wait for, or
+    "again" after WAIT_SLICE_SECONDS so the client re-polls."""
     global waiter_seq
     with cond:
         waiter_seq += 1
         token = waiter_seq
         waiters[session_id] = token
-        deadline = time.time() + WAIT_MAX_SECONDS
+        deadline = time.time() + WAIT_SLICE_SECONDS
         try:
             while True:
                 if waiters.get(session_id) != token:
+                    log("askqd", "wait-superseded", session=short(session_id))
                     return None
                 with db() as conn:
                     rows = conn.execute(
@@ -295,8 +302,13 @@ def wait_for_answers(session_id, sock):
                         "select count(*) from asks where session_id = ? and status = 'open'",
                         (session_id,),
                     ).fetchone()[0]
-                if not pending or time.time() > deadline or peer_closed(sock):
+                if not pending:
                     return None
+                if peer_closed(sock):
+                    log("askqd", "wait-peer-closed", session=short(session_id))
+                    return None
+                if time.time() > deadline:
+                    return "again"
                 cond.wait(timeout=15)
         finally:
             if waiters.get(session_id) == token:
@@ -317,6 +329,7 @@ def inbox():
             "session_id": r["session_id"],
             "cwd": r["cwd"],
             "branch": r["branch"],
+            "host": r["host"],
             "context": r["context"],
             "questions": json.loads(r["questions"]),
             "created_at": r["created_at"],
@@ -338,6 +351,7 @@ def answer(body):
         )
         if cur.rowcount != 1:
             raise ValueError("ask is not open")
+    log("askqd", "answered", id=ask_label(int(body["id"])), kind=kind)
     with cond:
         cond.notify_all()
 
@@ -366,6 +380,24 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def do_GET(self):
+        self.guarded(self.get)
+
+    def do_POST(self):
+        self.guarded(self.post)
+
+    def guarded(self, fn):
+        """Run one request; log any exception with its traceback and try a 500."""
+        try:
+            fn()
+        except Exception as e:
+            log("askqd", "request-crash", method=self.command, path=self.path,
+                peer=self.client_address[0], error=repr(e), trace=traceback.format_exc())
+            try:
+                self.send(500, {"error": repr(e)})
+            except OSError:
+                pass
+
+    def get(self):
         if self.path == "/health":
             self.send(200, {"ok": True, "urls": URLS})
         elif self.path == "/api/inbox":
@@ -376,33 +408,34 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send(404, {"error": "not found"})
 
-    def do_POST(self):
+    def post(self):
         try:
             body = self.read_json()
         except ValueError:
             self.send(400, {"error": "bad json"})
             return
-        if self.path.startswith("/hook/") and not self.server.loopback:
-            self.send(403, {"error": "hook endpoints are loopback only"})
+        if self.path.startswith("/hook/") and not self.server.loopback and not same_tailnet_user(self.client_address[0]):
+            log("askqd", "hook-forbidden", path=self.path, peer=self.client_address[0])
+            self.send(403, {"error": "hook endpoints need loopback or a peer owned by this tailnet user"})
             return
         if self.path == "/hook/pre-ask":
             ask_id = enqueue(body)
-            self.send(200, {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": DENY_REASON.format(id=ask_label(ask_id)),
-                }
-            })
+            self.send(200, deny_output(ask_label(ask_id)))
         elif self.path == "/hook/wait":
             rows = wait_for_answers(body.get("session_id") or "unknown", self.connection)
+            if rows == "again":
+                self.send(202, {"again": True})
+                return
             if not rows:
                 self.send(204)
                 return
+            ids = ",".join(ask_label(r["id"]) for r in rows)
             try:
                 self.send(200, format_wake(rows), "text/plain; charset=utf-8")
-            except OSError:
+                log("askqd", "delivered", ids=ids, session=short(body.get("session_id")))
+            except OSError as e:
                 # The hook died before reading; put the answers back.
+                log("askqd", "deliver-failed-requeued", ids=ids, session=short(body.get("session_id")), error=e)
                 with db() as conn:
                     conn.executemany(
                         "update asks set status = 'answered', delivered_at = null where id = ?",
@@ -440,19 +473,25 @@ def make_server(host, loopback):
 
 
 def main():
-    init_db()
-    servers = [make_server(HOST, True)]
+    try:
+        init_db()
+        servers = [make_server(HOST, True)]
+    except Exception as e:
+        log("askqd", "start-failed", port=PORT, db=DB_PATH, error=repr(e), trace=traceback.format_exc())
+        raise
     ts = tailnet_ip()
     if ts:
         try:
             servers.append(make_server(ts, False))
         except OSError as e:
             sys.stderr.write("askqd: cannot bind tailnet %s: %s\n" % (ts, e))
+            log("askqd", "tailnet-bind-failed", ip=ts, port=PORT, error=e)
     URLS.extend("http://%s:%d/" % (s.server_address[0], PORT) for s in servers)
     if "--daemon" in sys.argv:
         daemonize()
     for url in URLS:
         sys.stderr.write("askqd listening on %s\n" % url)
+    log("askqd", "started", python=sys.executable, urls=" ".join(URLS), code=HERE)
     for s in servers[1:]:
         threading.Thread(target=s.serve_forever, daemon=True).start()
     servers[0].serve_forever()

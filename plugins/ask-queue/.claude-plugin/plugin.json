@@ -1,6 +1,6 @@
 {
   "name": "ask-queue",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Queues AskUserQuestion calls from every session into one localhost inbox with desktop notifications; answers wake the asking session.",
   "author": {
     "name": "sharat",

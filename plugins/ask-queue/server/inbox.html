@@ -123,6 +123,7 @@ function cardHtml(a) {
     : '<span class="busy">● session busy or gone</span>';
   return '<div class="card" id="ask' + a.id + '">' +
     '<div class="meta"><span class="label">' + esc(a.label) + '</span>' +
+    (a.host ? '<span class="chip">' + esc(a.host) + '</span>' : '') +
     '<span class="chip">' + esc(repo) + '</span>' +
     (a.branch ? '<span class="chip">' + esc(a.branch) + '</span>' : '') +
     '<span data-age="' + a.id + '">' + ago(a.created_at) + '</span>' + status + '</div>' +

@@ -1,14 +1,14 @@
 #!/bin/sh
 # PreToolUse hook, matcher AskUserQuestion.
-# Queues the question in the daemon and denies the tool call with a reason
-# that tells the session to keep working. Any failure exits 0 with no output,
-# so the native picker shows as usual.
+# askq_client.py queues the question with the hub (local daemon, or the URL in
+# <state>/hub) and prints a deny whose reason tells the session to keep
+# working. No output means the native picker shows as usual.
 
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname -- "$script_dir")
-. "$root/lib/askq.sh"
-
-askq_ensure_daemon "$root" || exit 0
-out=$(curl -sf --max-time 10 -H 'Content-Type: application/json' \
-  --data-binary @- "$(askq_url)/hook/pre-ask") || exit 0
-printf '%s\n' "$out"
+if ! command -v python3 >/dev/null 2>&1; then
+  state="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/ask-queue"
+  mkdir -p "$state" && printf '%s pre-ask[%s] no-python3 PATH="%s"\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$$" "$PATH" >>"$state/ask-queue.log"
+  exit 0
+fi
+exec python3 "$root/server/askq_client.py" pre-ask
