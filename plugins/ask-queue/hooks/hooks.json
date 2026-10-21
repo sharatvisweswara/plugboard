@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-ask.sh",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-wait.sh",
+            "timeout": 86400,
+            "asyncRewake": true,
+            "rewakeMessage": "Answers arrived from the ask-queue inbox:",
+            "rewakeSummary": "ask-queue answer"
+          }
+        ]
+      }
+    ]
+  }
+}

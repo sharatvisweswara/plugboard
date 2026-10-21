@@ -38,6 +38,12 @@
       "source": "./plugins/simple-english",
       "description": "Writing style based on ASD-STE100 Simplified Technical English — short sentences, one word per meaning, active voice, no hedging modals. Loaded once per session, not reinjected per turn.",
       "version": "0.1.0"
+    },
+    {
+      "name": "ask-queue",
+      "source": "./plugins/ask-queue",
+      "description": "Queues AskUserQuestion calls from every session into one localhost inbox with desktop notifications; answers wake the asking session.",
+      "version": "0.1.0"
     }
   ]
 }

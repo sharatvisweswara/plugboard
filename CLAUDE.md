@@ -22,6 +22,7 @@ plugins/<name>/
 /plugin install autoland@plugboard
 /plugin install cleanup@plugboard
 /plugin install simple-english@plugboard
+/plugin install ask-queue@plugboard
 ```
 
 After editing a plugin's shipped files, reinstall/reload it in a running session to pick up changes. Every plugin script that needs its own root resolves it from `$0`'s location rather than assuming `CLAUDE_PLUGIN_ROOT` is set, since that variable is only exported to hooks, not to the shell running a slash command's `!` bash block — see the `script_dir=$(cd -- "$(dirname -- "$0")" ...)` pattern in `plugins/*/scripts/*.sh`. New plugin scripts should follow the same pattern.
@@ -70,6 +71,17 @@ Unlike `comms`' styles, this constrains wording/sentence construction, not reply
 Delivered via `hooks/hooks.json` on `SessionStart`, matcher `startup|resume|clear|fork|compact` — not `UserPromptSubmit`. `SessionStart`'s `compact` matcher exists specifically to re-inject content lost to context summarization, so wiring all 5 matchers gets the same durability as a per-turn hook at a fraction of the repeated cost (checked against the official hooks docs before building this, not assumed). `hooks/session-start.sh` just `cat`s `skills/simple-english/SKILL.md` and JSON-escapes it into `additionalContext` — same pattern as `superpowers`' own `session-start` hook. That SKILL.md is also independently reachable as a model-invoked Skill (no `disable-model-invocation`), so it's one source of truth serving both the ambient injection and on-demand reinforcement.
 
 No on/off toggle — ambient once installed. Rule set is a condensed paraphrase of ASD-STE100 (not the full 53-rule spec) by design; full design rationale, the rejected alternatives (comms axis, `UserPromptSubmit`, Skill-only), and why a bare "use ASD-STE100" name-drop doesn't work are in `docs/work/simple-english.md`.
+
+### `ask-queue` — one inbox for questions from every session
+
+Two hooks plus a local daemon. The `PreToolUse` hook on `AskUserQuestion` (`hooks/pre-ask.sh`) passes the hook input to the daemon, which queues the question, sends a desktop notification, and returns a `deny` whose reason tells the session to keep working on independent work and end its turn when blocked. The `Stop` hook (`hooks/stop-wait.sh`, `asyncRewake: true`) long-polls the daemon in the background; when an answer arrives it prints the answer to stderr and exits 2, which wakes the idle session.
+
+- Daemon: `server/askqd.py`, Python 3 standard library only (the macOS system python3 is 3.9, so no 3.10+ syntax). It listens on `127.0.0.1:${ASKQ_PORT:-7788}`, and the first hook call starts it. Hooks are thin `sh` + `curl` wrappers; the daemon does all JSON parsing.
+- State: `${CLAUDE_CONFIG_DIR:-~/.claude}/ask-queue/queue.db` (SQLite) and `askqd.log`, outside the plugin.
+- Inbox: `server/inbox.html`, served at `/`. `/ask-queue:inbox` opens it.
+- If the daemon cannot start, `pre-ask.sh` prints nothing and the native picker shows as usual.
+
+Design, spikes, and decisions are in `docs/work/ask-queue.md`.
 
 ## Add a plugin
 
