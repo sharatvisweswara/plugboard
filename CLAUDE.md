@@ -76,7 +76,7 @@ No on/off toggle — ambient once installed. Rule set is a condensed paraphrase 
 
 Two hooks plus a local daemon. The `PreToolUse` hook on `AskUserQuestion` (`hooks/pre-ask.sh`) passes the hook input to the daemon, which queues the question, sends a desktop notification, and returns a `deny` whose reason tells the session to keep working on independent work and end its turn when blocked. The `Stop` hook (`hooks/stop-wait.sh`, `asyncRewake: true`) long-polls the daemon in the background; when an answer arrives it prints the answer to stderr and exits 2, which wakes the idle session.
 
-- Daemon: `server/askqd.py`, Python 3 standard library only (the macOS system python3 is 3.9, so no 3.10+ syntax). It listens on `127.0.0.1:${ASKQ_PORT:-7788}`, and the first hook call starts it. Hooks are thin `sh` + `curl` wrappers; the daemon does all JSON parsing.
+- Daemon: `server/askqd.py`, Python 3 standard library only (the macOS system python3 is 3.9, so no 3.10+ syntax). It listens on `127.0.0.1:${ASKQ_PORT:-7788}`, and also on the machine's tailnet address (from `tailscale ip -4`, else a `100.64.0.0/10` address in `ifconfig`) so the inbox works from a phone. `/hook/*` endpoints answer on loopback only. The tailnet address is read once at daemon start. The first hook call starts the daemon. Hooks are thin `sh` + `curl` wrappers; the daemon does all JSON parsing.
 - State: `${CLAUDE_CONFIG_DIR:-~/.claude}/ask-queue/queue.db` (SQLite) and `askqd.log`, outside the plugin.
 - Inbox: `server/inbox.html`, served at `/`. `/ask-queue:inbox` opens it.
 - If the daemon cannot start, `pre-ask.sh` prints nothing and the native picker shows as usual.

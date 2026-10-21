@@ -12,6 +12,10 @@ Endpoints:
   GET  /                   inbox page
   GET  /api/inbox          open asks as JSON
   POST /api/answer         {"id", "kind": "answer"|"more_info", "answers", "note"}
+
+Listens on 127.0.0.1 always, and also on this machine's tailnet address when
+Tailscale is up, so the inbox is reachable from other tailnet devices. The
+/hook/* endpoints answer on loopback only.
 """
 
 import json
@@ -27,10 +31,14 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HOST = "127.0.0.1"
+TAILSCALE_CLIS = ("tailscale", "/usr/local/bin/tailscale", "/Applications/Tailscale.app/Contents/MacOS/Tailscale")
 PORT = int(os.environ.get("ASKQ_PORT", "7788"))
 STATE_DIR = os.path.join(os.environ.get("CLAUDE_CONFIG_DIR", os.path.expanduser("~/.claude")), "ask-queue")
 DB_PATH = os.path.join(STATE_DIR, "queue.db")
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# Inbox URLs this daemon serves, loopback first; filled in by main().
+URLS = []
 
 # Max time one /hook/wait request holds before returning 204.
 WAIT_MAX_SECONDS = 24 * 3600
@@ -80,6 +88,37 @@ def init_db():
                  delivered_at integer
                )"""
         )
+
+
+def is_tailnet_ip(ip):
+    """True for an IPv4 address in Tailscale's CGNAT range, 100.64.0.0/10."""
+    parts = ip.split(".")
+    return len(parts) == 4 and parts[0] == "100" and 64 <= int(parts[1]) <= 127
+
+
+def tailnet_ip():
+    """Return this machine's tailnet IPv4 address, or None. Asks the tailscale
+    CLI first, then falls back to scanning ifconfig for a 100.64.0.0/10 address."""
+    for cli in TAILSCALE_CLIS:
+        path = shutil.which(cli)
+        if not path:
+            continue
+        try:
+            out = subprocess.run([path, "ip", "-4"], capture_output=True, text=True, timeout=5)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        for line in out.stdout.split():
+            if is_tailnet_ip(line.strip()):
+                return line.strip()
+    try:
+        out = subprocess.run(["ifconfig"], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    for line in out.stdout.splitlines():
+        fields = line.split()
+        if len(fields) >= 2 and fields[0] == "inet" and is_tailnet_ip(fields[1]):
+            return fields[1]
+    return None
 
 
 def git_branch(cwd):
@@ -328,7 +367,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self.send(200, {"ok": True})
+            self.send(200, {"ok": True, "urls": URLS})
         elif self.path == "/api/inbox":
             self.send(200, inbox())
         elif self.path in ("/", "/index.html"):
@@ -342,6 +381,9 @@ class Handler(BaseHTTPRequestHandler):
             body = self.read_json()
         except ValueError:
             self.send(400, {"error": "bad json"})
+            return
+        if self.path.startswith("/hook/") and not self.server.loopback:
+            self.send(403, {"error": "hook endpoints are loopback only"})
             return
         if self.path == "/hook/pre-ask":
             ask_id = enqueue(body)
@@ -390,14 +432,30 @@ def daemonize():
     os.dup2(log.fileno(), 2)
 
 
+def make_server(host, loopback):
+    server = ThreadingHTTPServer((host, PORT), Handler)
+    server.daemon_threads = True
+    server.loopback = loopback
+    return server
+
+
 def main():
     init_db()
-    server = ThreadingHTTPServer((HOST, PORT), Handler)
-    server.daemon_threads = True
+    servers = [make_server(HOST, True)]
+    ts = tailnet_ip()
+    if ts:
+        try:
+            servers.append(make_server(ts, False))
+        except OSError as e:
+            sys.stderr.write("askqd: cannot bind tailnet %s: %s\n" % (ts, e))
+    URLS.extend("http://%s:%d/" % (s.server_address[0], PORT) for s in servers)
     if "--daemon" in sys.argv:
         daemonize()
-    sys.stderr.write("askqd listening on http://%s:%d\n" % (HOST, PORT))
-    server.serve_forever()
+    for url in URLS:
+        sys.stderr.write("askqd listening on %s\n" % url)
+    for s in servers[1:]:
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+    servers[0].serve_forever()
 
 
 if __name__ == "__main__":

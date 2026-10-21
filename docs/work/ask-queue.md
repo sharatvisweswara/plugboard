@@ -48,7 +48,7 @@ Questions from many parallel Claude Code sessions (`AskUserQuestion` calls) go i
 | Question | Status | Answer/decision |
 |----------|--------|-----------------|
 | Can a blocking `PreToolUse` hook wait for hours (is `timeout` capped)? | 15 min: yes. 2 h: running | `timeout: 10800` honored past 15 min; tool then ran normally. Blocking stays a fallback only. |
-| Does a `Stop` hook with `asyncRewake: true` wake an idle interactive session after a long wait? | 2 min: yes. 1 h: running | 2-min run woke the idle session; its stderr reached the model verbatim (evidence under Tasks) |
+| Does a `Stop` hook with `asyncRewake: true` wake an idle interactive session after a long wait? | answered: yes | Both the 2-min and the 1-h run woke the idle session, and the stderr reached the model word for word (evidence under Tasks) |
 | Wake policy: wake the session on the first answer, or only when all its open questions are answered? | answered | First answer |
 | Does `asyncRewake` survive a backgrounded terminal and Mac sleep? | open — spike 2b, not blocking for the proof of concept | |
 | UI: localhost web page or native menu bar app? | answered | Localhost web page |
@@ -128,6 +128,8 @@ Constraints:
 - Daemon in Python 3 standard library only (`http.server`, `sqlite3`). Hooks stay POSIX `sh` + `curl`. — POSIX `sh` cannot serve HTTP or long-poll. Python 3 needs no install step on macOS developer machines. Confirmed by the user.
 - Answers wait 5 s in the page with an Undo button before they are sent. — The user misclicked "Yes" on Q-5, and a delivered answer cannot be taken back.
 - Notifications use `terminal-notifier -open <inbox>` when it is installed, else `osascript`. — With `osascript`, a click on the notification opens Script Editor instead of the inbox.
+- The daemon also listens on the tailnet address when Tailscale is up; `/hook/*` answers on loopback only (403 elsewhere). — The user wants the inbox on their phone. Keeping the hooks on loopback means other tailnet devices can read and answer questions but cannot inject them.
+- Phone access over the tailnet confirmed by the user (2026-10-21).
 - Direct replies typed into a session do not cancel queued questions. The queued answer's wake message tells the session to use its judgement if the user already answered directly. — No cancel logic is needed.
 
 ## Tasks
@@ -137,10 +139,12 @@ Constraints:
     hook log: start 13:10:36, end 13:25:36 (no kill)
     session:  ⏺ Bash(echo spike1) ⎿ spike1 · Worked for 15m 7s
     ```
-- [ ] Spike 2: `Stop` hook with `asyncRewake` waking an idle session (2 min passed; 1 h running)
+- [x] Spike 2: `Stop` hook with `asyncRewake` waking an idle session (2 min and 1 h passed)
     ```
     hook log: start 13:11:49, end 13:13:49 (exit 2)
     session:  ⏺ ready / ⏺ spike answer / ⏺ SPIKE-ANSWER-s2-2m: the user picked option B
+    1 h run: start 13:11:48, end 14:11:48 (exit 2)
+    session:  ⏺ ready / ⏺ spike answer / ⏺ SPIKE-ANSWER-s2-1h: the user picked option B · done 2:11 PM
     ```
 - [ ] Spike 2b: `asyncRewake` with backgrounded terminal and Mac sleep (needs user)
 - [x] Pick blocking vs async flow from spike results (async)
@@ -158,3 +162,4 @@ Proof of concept only. These come after the concept works:
 - Phone notifications (ntfy or similar)
 - Queuing permission prompts
 - Marking questions as "maybe answered directly" when the user types into a session
+- A "dismiss" action for questions whose session is gone (Q-10 showed the need: its session was stopped, and the question has no way out of the inbox)
