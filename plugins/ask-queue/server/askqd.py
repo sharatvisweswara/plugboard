@@ -133,16 +133,21 @@ def tailnet_ip():
 _whois_cache = {}
 
 
-def tailscale_json(*args):
-    """Run the tailscale CLI with --json and return the parsed output, or None."""
+def tailscale_json(command, *args):
+    """Run `tailscale <command> --json <args>` and return the parsed output, or None.
+    --json goes before positional args: the CLI stops parsing flags at the
+    first one ("whois <ip> --json" fails with "too many arguments")."""
     for cli in TAILSCALE_CLIS:
         path = shutil.which(cli)
         if not path:
             continue
+        out = None
         try:
-            out = subprocess.run([path] + list(args) + ["--json"], capture_output=True, text=True, timeout=5)
+            out = subprocess.run([path, command, "--json"] + list(args), capture_output=True, text=True, timeout=5)
             return json.loads(out.stdout)
-        except (OSError, subprocess.TimeoutExpired, ValueError):
+        except (OSError, subprocess.TimeoutExpired, ValueError) as e:
+            log("askqd", "tailscale-cli-failed", cmd=command, args=" ".join(args), error=e,
+                stderr=out.stderr[:200] if out else "")
             continue
     return None
 
