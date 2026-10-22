@@ -24,7 +24,7 @@ Claude sessions on other tailnet machines (first: the EC2 instance) send their `
 | If the laptop is unreachable when an EC2 session asks: spool on EC2 and forward later (recommended), fall back to the native picker, or block until reachable? | answered | Spool |
 | Hub location: the laptop (as asked), or the always-on EC2 instance with the laptop only showing notifications? | answered | Laptop |
 | Auth for remote `/hook/*` calls: a shared token (recommended), or `tailscale whois` on the peer IP? | answered, then revised | No token. Rely on Tailscale: `tailscale whois` must report the same user as the hub. |
-| Is the EC2 instance on Amazon Linux or Ubuntu? Is `python3` there 3.9 or newer? | answered (checked over SSH) | `orca-headless`: Ubuntu 24.04, Python 3.12.3, curl 8.5.0, Claude Code 2.1.306 in `~/.local/bin`. Tailnet IP 100.65.44.89. It reaches the laptop hub (`/health` 200). |
+| Is the EC2 instance on Amazon Linux or Ubuntu? Is `python3` there 3.9 or newer? | answered (checked over SSH) | Ubuntu 24.04, Python 3.12.3, curl 8.5.0, Claude Code in `~/.local/bin`. It reaches the laptop hub over the tailnet (`/health` 200). |
 
 ## Design
 
@@ -59,9 +59,9 @@ flowchart LR
     ui --> d
 ```
 
-- **Client-side enrichment.** A new `server/askq_client.py` runs on the machine that has the session. It reads the hook input, adds `context` (from `transcript_path`), `branch` (from `git -C cwd`), and `host` (the Tailscale `HostName` from `tailscale status --self --json`, else `hostname -s`; on EC2 `hostname -s` gives `ip-10-121-0-186`, which is useless), then posts the result. The daemon uses fields it receives and computes them only when they are missing. Local mode uses the same client, so there is one code path.
+- **Client-side enrichment.** A new `server/askq_client.py` runs on the machine that has the session. It reads the hook input, adds `context` (from `transcript_path`), `branch` (from `git -C cwd`), and `host` (the Tailscale `HostName` from `tailscale status --self --json`, else `hostname -s`; on EC2 `hostname -s` gives an `ip-10-...` name, which is useless), then posts the result. The daemon uses fields it receives and computes them only when they are missing. Local mode uses the same client, so there is one code path.
 - **Hub configuration.** `~/.claude/ask-queue/hub` holds the hub URL, for example `http://<laptop MagicDNS name>:7788`. If the file exists, the hooks never start a local daemon, and they talk to the hub. If it is absent, the behavior stays as it is today. A file, not an env var, because hook processes do not get the shell's env in every launch path, and a file survives plugin reinstalls.
-- **Auth.** No token. Tailscale already authenticates every device that can reach the tailnet address. For `/hook/*` on the tailnet listener, the hub runs `tailscale whois <peer IP>` (cached per IP) and accepts only peers whose user matches the hub's own user. Today the tailnet has one user (`sharat@autumncloud.one`) and no shared-in nodes, so this check only matters if a node is shared later. `/api/*` and the page stay open on the tailnet, as today. Loopback stays open.
+- **Auth.** No token. Tailscale already authenticates every device that can reach the tailnet address. For `/hook/*` on the tailnet listener, the hub runs `tailscale whois <peer IP>` (cached per IP) and accepts only peers whose user matches the hub's own user. Today the tailnet has one user and no shared-in nodes, so this check only matters if a node is shared later. `/api/*` and the page stay open on the tailnet, as today. Loopback stays open.
 - **Long-poll over the network.** The server returns `202` every 10 minutes with no answer. On `202`, the client polls again at once. On a connection error, it retries with backoff (5 s, then up to 60 s) until the 24 h limit. `204` still means "nothing queued, stop". This keeps idle TCP connections short and survives laptop sleep and Wi-Fi changes.
 - **Spool for an unreachable hub.** If `POST /hook/pre-ask` fails, the client writes the payload to `~/.claude/ask-queue/spool/` and returns the same `deny` with an ID of the form `Q-pending-<n>`. The `Stop` hook first flushes the spool, then waits. The hub gives the real `Q-<id>` when the question arrives. The session only sees the answer, so the ID change does not matter to it.
 - **UI.** Each card shows a host chip next to the repo chip.
@@ -80,13 +80,13 @@ Why the hub stays on the laptop for now: Mac notifications must come from the la
 ## Tasks
 
 - [x] Check the OS and `python3` version on EC2
-- [ ] `askq_client.py`: enrich and post; daemon accepts precomputed fields
-- [ ] Hub config file + `tailscale whois` same-user check on the tailnet listener
-- [ ] Long-poll `202` re-poll + reconnect backoff in `stop-wait.sh`
-- [ ] Spool + flush
-- [ ] Host chip in the inbox
-- [ ] EC2 install: `/plugin marketplace add sharatvisweswara/plugboard`, `/plugin install ask-queue@plugboard`, write the `hub` file
-- [ ] `CLAUDE.md` setup steps
+- [x] `askq_client.py`: enrich and post; daemon accepts precomputed fields
+- [x] Hub config file + `tailscale whois` same-user check on the tailnet listener
+- [x] Long-poll `202` re-poll + reconnect backoff in `stop-wait.sh`
+- [x] Spool + flush
+- [x] Host chip in the inbox
+- [x] EC2 install: `/plugin marketplace add sharatvisweswara/plugboard`, `/plugin install ask-queue@plugboard`, write the `hub` file
+- [x] `CLAUDE.md` setup steps (ask-queue section, "Remote sessions")
 - [x] Event log at `<state>/ask-queue.log` from the client, the hooks, and the daemon (every outcome, hub errors, fallbacks, tracebacks)
 
 ## Out of Scope

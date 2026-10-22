@@ -41,7 +41,7 @@ Questions from many parallel Claude Code sessions (`AskUserQuestion` calls) go i
     The user received Q-10 in the inbox.
 - [ ] A question left unanswered for at least 1 hour still delivers its answer when the user answers it. — _evidence: command (timestamps + transcript excerpt)_
 - [x] The plugin is registered in `.claude-plugin/marketplace.json` and installs with `/plugin install ask-queue@plugboard`. — _evidence: pointer_
-    Registered: `.claude-plugin/marketplace.json`. Installed from the marketplace by the user: a marvin2 session queued Q-3 into the host daemon (`~/.claude/ask-queue/queue.db`, port 7788), which runs from `/Users/sharat/Projects/plugboard/plugins/ask-queue/server/askqd.py`.
+    Registered: `.claude-plugin/marketplace.json`. Installed from the marketplace by the user: a session in another repo queued Q-3 into the daemon on port 7788 (`~/.claude/ask-queue/queue.db`), which runs from the main checkout of this repo.
 
 ## Open Questions
 
