@@ -31,7 +31,8 @@
   .chip { background: var(--chip); border-radius: 4px; padding: 1px 6px; }
   .label { color: var(--fg); font-weight: 600; }
   .waiting { color: var(--ok); }
-  .busy { color: var(--warn); }
+  .working { color: var(--muted); }
+  .silent { color: var(--warn); }
   details { margin: 0 0 12px; font-size: 13px; }
   details pre { white-space: pre-wrap; background: var(--chip); padding: 8px;
                 border-radius: 6px; max-height: 240px; overflow: auto; margin: 6px 0 0; }
@@ -84,10 +85,13 @@ function render(asks) {
   count.textContent = asks.length ? "(" + asks.length + " waiting)" : "";
   document.title = asks.length ? "(" + asks.length + ") ask-queue" : "ask-queue";
   // Keep in-progress input: only rebuild when the set of asks changes.
-  const key = asks.map(a => a.id + ":" + a.session_waiting).join(",");
+  const key = asks.map(a => a.id + ":" + sessionStatus(a)[0]).join(",");
   // Never rebuild while an answer is counting down: it would drop the Undo button.
   if (key === shown || Object.keys(pending).length) {
-    asks.forEach(a => { const el = document.querySelector('[data-age="' + a.id + '"]'); if (el) el.textContent = ago(a.created_at); });
+    asks.forEach(a => {
+      const el = document.querySelector('[data-age="' + a.id + '"]'); if (el) el.textContent = ago(a.created_at);
+      const st = document.querySelector('[data-status="' + a.id + '"]'); if (st) st.textContent = sessionStatus(a)[1];
+    });
     return;
   }
   const keep = {};
@@ -104,6 +108,17 @@ function render(asks) {
   });
 }
 
+// A session with a recent hook request is working on something (often on an
+// answer it just got); one silent for an hour may have stopped.
+const SILENT_SECONDS = 3600;
+
+function sessionStatus(a) {
+  if (a.session_waiting) return ["waiting", "● session waiting"];
+  if (a.last_seen == null) return ["silent", "● no contact since the hub started"];
+  if (Date.now() / 1000 - a.last_seen < SILENT_SECONDS) return ["working", "● session working · seen " + ago(a.last_seen)];
+  return ["silent", "● no contact · seen " + ago(a.last_seen)];
+}
+
 function cardHtml(a) {
   const repo = a.cwd ? a.cwd.split("/").filter(Boolean).pop() : "?";
   const qs = a.questions.map((q, i) => {
@@ -118,9 +133,8 @@ function cardHtml(a) {
       '<div class="q-text">' + esc(q.question) + '</div>' + opts +
       '<input class="other" type="text" name="' + name + 'other" placeholder="Other (free text, replaces the selection)"></div>';
   }).join("");
-  const status = a.session_waiting
-    ? '<span class="waiting">● session waiting</span>'
-    : '<span class="busy">● session busy or gone</span>';
+  const [cls, text] = sessionStatus(a);
+  const status = '<span class="' + cls + '" data-status="' + a.id + '">' + text + '</span>';
   return '<div class="card" id="ask' + a.id + '">' +
     '<div class="meta"><span class="label">' + esc(a.label) + '</span>' +
     (a.host ? '<span class="chip">' + esc(a.host) + '</span>' : '') +

@@ -67,6 +67,9 @@ cond = threading.Condition()
 # same session return 204 when superseded, so at most one waiter delivers.
 waiters = {}
 waiter_seq = 0
+# session_id -> last time a hook request from that session started or ended.
+# In memory only: empty after a restart until each session's hook reconnects.
+last_seen = {}
 
 
 def db():
@@ -319,6 +322,7 @@ def wait_for_answers(session_id, sock):
                     return "again"
                 cond.wait(timeout=15)
         finally:
+            last_seen[session_id] = time.time()
             if waiters.get(session_id) == token:
                 del waiters[session_id]
 
@@ -342,6 +346,7 @@ def inbox():
             "questions": json.loads(r["questions"]),
             "created_at": r["created_at"],
             "session_waiting": r["session_id"] in live,
+            "last_seen": int(last_seen[r["session_id"]]) if r["session_id"] in last_seen else None,
         }
         for r in rows
     ]
@@ -429,6 +434,8 @@ class Handler(BaseHTTPRequestHandler):
             log("askqd", "hook-forbidden", path=self.path, peer=self.client_address[0])
             self.send(403, {"error": "hook endpoints need loopback or a peer owned by this tailnet user"})
             return
+        if self.path.startswith("/hook/"):
+            last_seen[body.get("session_id") or "unknown"] = time.time()
         if self.path == "/hook/pre-ask":
             ask_id = enqueue(body)
             self.send(200, deny_output(ask_label(ask_id)))
