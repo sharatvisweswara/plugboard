@@ -355,6 +355,10 @@ def cmd_wait(hook_input):
     session_id = hook_input.get("session_id") or "unknown"
     sid = short(session_id)
     if not is_outstanding(session_id) and not spooled(session_id):
+        # One line per turn end of a session with nothing queued. Kept on
+        # purpose: answers that never arrive show up here as a skip after
+        # the question was queued.
+        log("wait", "skip-no-marker", session=sid)
         return 0
     log("wait", "start", session=sid, hub=base, spooled=len(spooled(session_id)))
     started = time.time()
