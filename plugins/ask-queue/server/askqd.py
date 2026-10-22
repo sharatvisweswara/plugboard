@@ -8,7 +8,9 @@ Endpoints:
   GET  /health             liveness probe used by the hooks
   POST /hook/pre-ask       PreToolUse hook input in, hook output JSON out
   POST /hook/wait          Stop hook input in; long-polls for answers.
-                           200 + wake text, or 204 when there is nothing to wait for
+                           200 + wake text; 202 poll again; 204 when the session
+                           has no open asks; 409 when a newer waiter for the
+                           same session took over
   GET  /                   inbox page
   GET  /api/inbox          open asks as JSON
   POST /api/answer         {"id", "kind": "answer"|"more_info", "answers", "note"}
@@ -279,8 +281,9 @@ def peer_closed(sock):
 
 def wait_for_answers(session_id, sock):
     """Block until this session has answered, undelivered asks. Returns the
-    rows (marked delivered), None when there is nothing to wait for, or
-    "again" after WAIT_SLICE_SECONDS so the client re-polls."""
+    rows (marked delivered), None when the session has no open asks or the
+    client hung up, "superseded" when a newer waiter took over, or "again"
+    after WAIT_SLICE_SECONDS so the client re-polls."""
     global waiter_seq
     with cond:
         waiter_seq += 1
@@ -291,7 +294,7 @@ def wait_for_answers(session_id, sock):
             while True:
                 if waiters.get(session_id) != token:
                     log("askqd", "wait-superseded", session=short(session_id))
-                    return None
+                    return "superseded"
                 with db() as conn:
                     rows = conn.execute(
                         "select * from asks where session_id = ? and status = 'answered' order by id",
@@ -394,6 +397,9 @@ class Handler(BaseHTTPRequestHandler):
         """Run one request; log any exception with its traceback and try a 500."""
         try:
             fn()
+        except (BrokenPipeError, ConnectionResetError) as e:
+            log("askqd", "client-gone", method=self.command, path=self.path,
+                peer=self.client_address[0], error=repr(e))
         except Exception as e:
             log("askqd", "request-crash", method=self.command, path=self.path,
                 peer=self.client_address[0], error=repr(e), trace=traceback.format_exc())
@@ -430,6 +436,11 @@ class Handler(BaseHTTPRequestHandler):
             rows = wait_for_answers(body.get("session_id") or "unknown", self.connection)
             if rows == "again":
                 self.send(202, {"again": True})
+                return
+            if rows == "superseded":
+                # Not 204: the client must keep its outstanding marker, since
+                # the session's asks are still open.
+                self.send(409, {"superseded": True})
                 return
             if not rows:
                 self.send(204)

@@ -391,6 +391,11 @@ def cmd_wait(hook_input):
         if status == 202:
             slices += 1
             continue
+        if status == 409:
+            # A newer wait for this session (a later turn end) took over. Keep
+            # the outstanding marker: the session's questions are still open.
+            log("wait", "superseded", session=sid, waited_s=waited, slices=slices)
+            return 0
         if status == 204 and not spooled(session_id):
             clear_outstanding(session_id)
             log("wait", "nothing-open", session=sid, waited_s=waited, slices=slices)
