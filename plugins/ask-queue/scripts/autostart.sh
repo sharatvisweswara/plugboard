@@ -45,7 +45,7 @@ for name, installs in plugins.items():
                 sys.exit(0)
 PY
 )
-# Older installed versions have no --launchd mode; use the copy that ran `on`.
+# Older installed versions have no --launchd mode; use the copy that ran "autostart.sh on".
 grep -q -- "--launchd" "\$root/server/askqd.py" 2>/dev/null || root="$root"
 exec python3 "\$root/server/askqd.py" --launchd
 EOF
