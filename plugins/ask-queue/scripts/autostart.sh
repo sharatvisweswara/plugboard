@@ -105,7 +105,7 @@ case "${1:-status}" in
   status)
     if [ -f "$plist" ]; then echo "LaunchAgent: $plist"; else echo "LaunchAgent: not installed"; fi
     if loaded; then
-      launchctl print "$domain/$label" | grep -E '^\s*(state|pid|last exit code) =' | sed 's/^[[:space:]]*/  /'
+      launchctl print "$domain/$label" | grep -E '^\s*(state|pid|last exit code) =' | sed 's/^[[:space:]]*/  /' | awk '!seen[$1]++'
     fi
     if curl -sf --max-time 2 "http://127.0.0.1:$port/health" >/dev/null; then echo "hub: running on port $port"; else echo "hub: not running"; fi
     ;;
