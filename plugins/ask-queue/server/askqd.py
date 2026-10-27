@@ -40,6 +40,7 @@ import sys
 import threading
 import time
 import traceback
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from askq_client import TAILSCALE_CLIS, deny_output, git_branch, log, session_context, short
@@ -55,6 +56,9 @@ URLS = []
 
 # Max time one /hook/wait request holds before returning 202 (poll again).
 WAIT_SLICE_SECONDS = int(os.environ.get("ASKQ_WAIT_SLICE", "600"))
+
+# How often to retry the tailnet listener when Tailscale was down at start.
+TAILNET_RETRY_SECONDS = 30
 
 WAKE_FOOTER = (
     "If the user already answered you directly in this session, use your judgement "
@@ -495,7 +499,41 @@ def make_server(host, loopback):
     return server
 
 
+def hub_already_running():
+    """True when something on PORT answers /health like an ask-queue hub."""
+    try:
+        with urllib.request.urlopen("http://%s:%d/health" % (HOST, PORT), timeout=2) as resp:
+            return json.load(resp).get("ok") is True
+    except (OSError, ValueError):
+        return False
+
+
+def bind_tailnet_later():
+    """Tailscale can come up after the daemon (at login, under launchd).
+    Retry the tailnet listener every TAILNET_RETRY_SECONDS until it binds."""
+    while True:
+        time.sleep(TAILNET_RETRY_SECONDS)
+        ts = tailnet_ip()
+        if not ts:
+            continue
+        try:
+            server = make_server(ts, False)
+        except OSError as e:
+            log("askqd", "tailnet-bind-failed", ip=ts, port=PORT, error=e)
+            continue
+        URLS.append("http://%s:%d/" % (ts, PORT))
+        log("askqd", "tailnet-bound", ip=ts, port=PORT)
+        server.serve_forever()
+        return
+
+
 def main():
+    # --launchd: run in the foreground under the LaunchAgent (launchd
+    # captures stdout/stderr). If a hook already started a hub on this port,
+    # exit 0 so launchd does not restart this job in a loop.
+    if "--launchd" in sys.argv and hub_already_running():
+        log("askqd", "launchd-skip", reason="a hub already answers on port %d" % PORT)
+        return
     try:
         init_db()
         servers = [make_server(HOST, True)]
@@ -514,9 +552,12 @@ def main():
         daemonize()
     for url in URLS:
         sys.stderr.write("askqd listening on %s\n" % url)
-    log("askqd", "started", python=sys.executable, urls=" ".join(URLS), code=HERE)
+    log("askqd", "started", python=sys.executable, urls=" ".join(URLS), code=HERE,
+        mode="launchd" if "--launchd" in sys.argv else "daemon" if "--daemon" in sys.argv else "foreground")
     for s in servers[1:]:
         threading.Thread(target=s.serve_forever, daemon=True).start()
+    if len(servers) == 1:
+        threading.Thread(target=bind_tailnet_later, daemon=True).start()
     servers[0].serve_forever()
 
 
