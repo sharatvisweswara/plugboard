@@ -7,8 +7,9 @@
 #
 # The LaunchAgent runs <state>/launch-hub.sh. That launcher finds the
 # installed ask-queue plugin in installed_plugins.json at every start, so
-# plugin updates need no new LaunchAgent. If the plugin is not installed, it
-# uses the copy that ran `autostart.sh on`.
+# plugin updates need no new LaunchAgent. If the plugin is not installed
+# (or its version has no --launchd mode), it uses the copy that ran
+# `autostart.sh on`.
 
 set -eu
 
@@ -44,7 +45,8 @@ for name, installs in plugins.items():
                 sys.exit(0)
 PY
 )
-[ -f "\$root/server/askqd.py" ] || root="$root"
+# Older installed versions have no --launchd mode; use the copy that ran `on`.
+grep -q -- "--launchd" "\$root/server/askqd.py" 2>/dev/null || root="$root"
 exec python3 "\$root/server/askqd.py" --launchd
 EOF
   chmod +x "$launcher"
