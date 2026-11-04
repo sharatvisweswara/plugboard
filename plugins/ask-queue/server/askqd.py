@@ -29,6 +29,7 @@ that escapes the handlers.
 over the network never sit idle for hours; the client polls again.
 """
 
+import contextlib
 import json
 import os
 import select
@@ -76,10 +77,21 @@ waiter_seq = 0
 last_seen = {}
 
 
+@contextlib.contextmanager
 def db():
+    """Open the queue DB, commit on success, roll back on error, always close.
+
+    `with sqlite3.connect()` alone only ends the transaction and leaves the
+    handle open, which leaked one fd per request until launchd's 256-fd limit
+    made every request fail with "unable to open database file".
+    """
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 
 def init_db():
